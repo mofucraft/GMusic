@@ -38,6 +38,7 @@ dependencies {
     api(project(":v1_20_5", "reobf"))
     api(project(":v1_21", "reobf"))
     api(project(":v1_21_1", "reobf"))
+    api(project(":v1_21_4", "reobf"))
 }
 
 tasks {

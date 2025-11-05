@@ -1,0 +1,97 @@
+Plugin:
+
+  plugin-enabled: '[P]&a プラグインが正常に有効化されました。'
+  plugin-link: '[P]&a &6%Link%&a とのリンクが成功しました！'
+  plugin-update: |-
+    [P]&a 新しいバージョンが利用可能です: &6%NewVersion%&a！
+    [P]&a 現在のバージョン: &6%Version%&a！
+    [P]&a 最新バージョンをダウンロード:
+    [P]&6%Path%
+  plugin-data: '[P]&c データストレージへの接続を確立できませんでした。サーバーのコンソールを確認してください！'
+  plugin-version: '[P]&c このサーバーバージョンではプラグインを使用できません！(&b%Version%&c)'
+  plugin-reload: '[P]&a プラグインが正常にリロードされました。'
+  plugin-disabled: '[P]&a プラグインが正常に無効化されました。'
+  plugin-prefix: '&7[&6GMusic&7]'
+
+Messages:
+
+  command-permission-error: '[P]&c このコマンドを使用する権限がありません！'
+  command-sender-error: '[P]&c このコマンドを実行できません！'
+  command-version-error: |-
+    [P]&c サーバーバージョンが古すぎます！(&b%Version%&c)
+    [P]&c 機能を利用するにはサーバーをアップグレードしてください！
+  
+  command-gmusic-use-error: '[P]&c /music play|playing|random|stop|pause|resume|skip|toggle'
+  command-gmusic-song-error: '[P]&c 曲 &6%Song%&c が存在しません！'
+  command-gmusic-no-song-error: '[P]&c 再生できる曲がありません！'
+  command-gmusic-play: '[P]&a 再生中: &6%SongTitle%'
+  command-gmusic-playing-error: '[P]&c 現在再生中の曲はありません！'
+  command-gmusic-playing: '[P]&a 再生中: &6%SongTitle%'
+  command-gmusic-stop: '[P]&a 再生を停止しました。'
+  command-gmusic-paused-error: '[P]&c 一時停止中の曲はありません！'
+  command-gmusic-pause: '[P]&a 曲を一時停止しました。'
+  command-gmusic-resume: '[P]&a 曲の再生を再開しました。'
+  command-gamusic-use-error: '[P]&c /amusic download|jukebox'
+  command-gamusic-download-use-error: '[P]&c /amusic download <タイプ> <名前> <パス>'
+  command-gamusic-download-folder-error: '[P]&c フォルダー&6 %Folder%&c が存在しません！'
+  command-gamusic-download-name-error: '[P]&c ファイル名&6 %Name%&c はすでに存在します！'
+  command-gamusic-download-error: '[P]&c ファイルのダウンロード中にエラーが発生しました:&6 %Error%'
+  command-gamusic-download: '[P]&a ファイルのダウンロードに成功しました。'
+  command-gamusic-download-convert-error: "[P]&a ファイルのコンバート中にエラーが発生しました"
+  command-gamusic-download-convert: "[P]&a ファイルのコンバートに成功しました。 (%SongName%)"
+  command-gamusic-jukebox-use-error: '[P]&c /amusic jukebox <プレイヤー> [<数量>]'
+  command-gamusic-jukebox-online-error: '[P]&c プレイヤー&6 %Player%&c はオンラインではありません！'
+  command-gamusic-jukebox-amount-error: '[P]&c 数量&b %Amount%&c が無効です！'
+  command-gamusic-jukebox: '[P]&a あなたは&6 %Player%&b に %Amount% 個の&a ジュークボックスを渡しました。'
+  actionbar-play: '&a 再生中: &6%SongTitle%'
+  actionbar-playing: '&a 再生中: &6%SongTitle%'
+  actionbar-stop: '&a 再生を停止しました'
+  actionbar-pause: '&a 曲を一時停止しました'
+  actionbar-resume: '&a 曲の再生を再開しました'
+
+MusicGUI:
+
+  title: '&cジュークボックス'
+
+  music-pause: '&6一時停止'
+  music-resume: '&6再開'
+  music-stop: '&6停止'
+  music-skip: '&6曲をスキップ'
+  music-random: '&6ランダム再生'
+  music-back: '&6戻る'
+
+  music-playlist-mode-default: '&aモード: &6デフォルト'
+  music-playlist-mode-favorites: '&aモード: &6お気に入り'
+  music-playlist-mode-radio: '&aモード: &6ラジオ'
+
+  music-options: '&cオプション'
+  music-options-volume: '&a音量: &b%Volume%%'
+  music-options-join: '&aログイン時に再生: &6%Join%'
+  music-options-play-mode-once: '&aモード: &6一回のみ'
+  music-options-play-mode-shuffle: '&aモード: &6シャッフル'
+  music-options-play-mode-repeat: '&aモード: &6リピート'
+  music-options-play-mode-continue: '&aモード: &6連続再生'
+  music-options-particle: '&aパーティクル: &6%Particle%'
+  music-options-reverse: '&a逆再生: &6%Reverse%'
+  music-options-range: '&a可聴範囲: &b%Range%'
+
+  music-options-true: '有効'
+  music-options-false: '無効'
+
+  music-search-none: '&c検索'
+  music-search: '&c検索: &6%Search%'
+  music-search-menu-title: '&c曲を検索'
+  music-search-menu-field: '検索'
+
+  last-page: '&6前のページ'
+  next-page: '&6次のページ'
+
+  disc-title: '&b%Title%&7 -&6 %OAuthor%'
+  disc-empty-author: '不明'
+  disc-empty-oauthor: '不明'
+  disc-favorite: '&cお気に入り'
+
+Items:
+
+  jukebox-title: '&cジュークボックス'
+  jukebox-description: '&a音楽を再生できるジュークボックス'
