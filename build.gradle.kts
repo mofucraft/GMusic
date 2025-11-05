@@ -37,9 +37,7 @@ dependencies {
     api(project(":v1_20_3", "reobf"))
     api(project(":v1_20_5", "reobf"))
     api(project(":v1_21", "reobf"))
-    api(project(":v1_21_2", "reobf"))
-    api(project(":v1_21_4", "reobf"))
-    api(project(":v1_21_5", "reobf"))
+    api(project(":v1_21_1", "reobf"))
 }
 
 tasks {

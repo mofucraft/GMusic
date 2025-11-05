@@ -10,7 +10,7 @@ import java.util.logging.Level;
 
 public class VersionService {
 
-    private final String LATEST_VERSION = "v1_21_5";
+    private final String LATEST_VERSION = "v1_21_1";
     private final HashMap<String, String> VERSION_MAPPING = new HashMap<>(); {
         VERSION_MAPPING.put("v1_18_1", "v1_18");
         VERSION_MAPPING.put("v1_19_2", "v1_19_1");
@@ -18,7 +18,6 @@ public class VersionService {
         VERSION_MAPPING.put("v1_20_4", "v1_20_3");
         VERSION_MAPPING.put("v1_20_6", "v1_20_5");
         VERSION_MAPPING.put("v1_21_1", "v1_21");
-        VERSION_MAPPING.put("v1_21_3", "v1_21_2");
     }
     private final GMusicMain gMusicMain;
     private final String serverVersion;

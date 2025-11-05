@@ -1,4 +1,4 @@
-package dev.geco.gmusic.mcv.v1_21_5.object.gui;
+package dev.geco.gmusic.mcv.v1_21_1.object.gui;
 
 import dev.geco.gmusic.GMusicMain;
 import dev.geco.gmusic.api.event.GMusicReloadEvent;

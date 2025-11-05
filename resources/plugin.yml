@@ -50,11 +50,16 @@ permissions:
     description: AMusic | Permission
     children:
       GMusic.AMusic: true
+      GMusic.AMusic.Download: true
       GMusic.AMusic.UseJukeBox: true
 
   GMusic.AMusic:
     default: op
     description: AMusic command | Permission
+
+  GMusic.AMusic.Download:
+    default: op
+    description: Download | Permission
 
   GMusic.AMusic.UseJukeBox:
     default: op

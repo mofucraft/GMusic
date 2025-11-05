@@ -68,7 +68,7 @@ public class PlayService {
 		return !songs.isEmpty() ? songs.get(random.nextInt(songs.size())) : null;
 	}
 
-	public GSong getShuffleSong(UUID uuid, GSong song) {
+	public GSong getContinueSong(UUID uuid, GSong song) {
 		GPlaySettings playSettings = gMusicMain.getPlaySettingsService().getPlaySettings(uuid);
 		List<GSong> songs = playSettings.getPlayListMode() == GPlayListMode.FAVORITES ? playSettings.getFavorites() : gMusicMain.getSongService().getSongs();
 		return !songs.isEmpty() ? songs.indexOf(song) + 1 == songs.size() ? songs.get(0) : songs.get(songs.indexOf(song) + 1) : null;
@@ -111,7 +111,8 @@ public class PlayService {
 					} else {
 						timer.cancel();
 
-						if(playSettings.getPlayMode() == GPlayMode.SHUFFLE) playSong(player, getShuffleSong(uuid, song), gMusicMain.getConfigService().PS_TIME_UNTIL_SHUFFLE);
+						if(playSettings.getPlayMode() == GPlayMode.CONTINUE) playSong(player, getContinueSong(uuid, song), gMusicMain.getConfigService().PS_TIME_UNTIL_CONTINUE);
+						else if(playSettings.getPlayMode() == GPlayMode.SHUFFLE) playSong(player, getRandomSong(uuid), gMusicMain.getConfigService().PS_TIME_UNTIL_SHUFFLE);
 						else {
 							playStates.remove(uuid);
 							GMusicGUI musicGUI = GMusicGUI.getMusicGUI(uuid);
@@ -157,7 +158,7 @@ public class PlayService {
 
 	public GSong getNextSong(Player player) {
 		GPlayState playState = getPlayState(player.getUniqueId());
-		return playState != null ? getShuffleSong(player.getUniqueId(), playState.getSong()) : getRandomSong(player.getUniqueId());
+		return playState != null ? getContinueSong(player.getUniqueId(), playState.getSong()) : getRandomSong(player.getUniqueId());
 	}
 
 	public void stopSongs() {

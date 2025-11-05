@@ -252,6 +252,8 @@ public class MidiConverter {
 		try {
 			List<String> gnbsContent = readMidiFile(midiFile);
 
+			if(gnbsContent == null) return false;
+
 			String gnbsFilename = midiFile.getName();
 			int extensionPos = gnbsFilename.lastIndexOf(".");
 			if(extensionPos != -1) gnbsFilename = gnbsFilename.substring(0, extensionPos);
@@ -333,7 +335,10 @@ public class MidiConverter {
 				rows.add((rowTick - currentTick) + "!" + tickContent.get(rowTick));
 				currentTick = rowTick;
 			}
-		} catch(Throwable e) { gMusicMain.getLogger().log(Level.SEVERE, "Could not read midi file!", e); }
+		} catch(Throwable e) {
+			gMusicMain.getLogger().log(Level.SEVERE, "Could not read midi file! (" + midiFile.getName() + ")", e);
+			rows = null;
+		}
 
 		return rows;
 	}

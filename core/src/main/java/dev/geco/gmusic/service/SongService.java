@@ -78,6 +78,12 @@ public class SongService {
             return;
         }
 
+        File convertDir = new File(gMusicMain.getDataFolder(), "convert");
+        if(!convertDir.exists() && !convertDir.mkdir()) {
+            gMusicMain.getLogger().severe("Could not create 'convert' directory!");
+            return;
+        }
+
         File[] nbsFiles = nbsDir.listFiles();
         if(nbsFiles != null) {
             for(File file : nbsFiles) {

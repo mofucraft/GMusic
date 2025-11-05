@@ -28,6 +28,7 @@ import dev.geco.gmusic.service.VersionService;
 import dev.geco.gmusic.service.message.PaperMessageService;
 import dev.geco.gmusic.service.message.SpigotMessageService;
 import dev.geco.gmusic.util.EnvironmentUtil;
+import dev.geco.gmusic.util.FileUtil;
 import dev.geco.gmusic.util.SteroNoteUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
@@ -39,6 +40,16 @@ public class GMusicMain extends JavaPlugin {
 
     public static final String NAME = "GMusic";
     public static final String RESOURCE_ID = "000000";
+    public static final String MIDI_PATH = "midi";
+    public static final String SONGS_PATH = "songs";
+    public static final String CONVERT_PATH = "convert";
+    public static final String DATA_PATH = "data";
+    public static final String NBS_EXT = "nbs";
+    public static final String GNBS_EXT = "gnbs";
+    public static final String MIDI_EXT = "midi";
+    public static final String NBS_FILETYP = ".nbs";
+    public static final String GNBS_FILETYP = ".gnbs";
+    public static final String MID_FILETYP = ".mid";
 
     private final int BSTATS_RESOURCE_ID = 4925;
     private static GMusicMain gMusicMain;
@@ -57,6 +68,7 @@ public class GMusicMain extends JavaPlugin {
     private MidiConverter midiConverter;
     private NBSConverter nbsConverter;
     private EnvironmentUtil environmentUtil;
+    private FileUtil fileUtil;
     private SteroNoteUtil steroNoteUtil;
     private boolean supportsPaperFeature = false;
     private boolean supportsTaskFeature = false;
@@ -93,6 +105,8 @@ public class GMusicMain extends JavaPlugin {
 
     public EnvironmentUtil getEnvironmentUtil() { return environmentUtil; }
 
+    public FileUtil getFileUtil() { return fileUtil; }
+
     public SteroNoteUtil getSteroNoteUtil() { return steroNoteUtil; }
 
     public boolean supportsPaperFeature() { return supportsPaperFeature; }
@@ -119,6 +133,7 @@ public class GMusicMain extends JavaPlugin {
         nbsConverter = new NBSConverter(this);
 
         environmentUtil = new EnvironmentUtil();
+        fileUtil = new FileUtil();
         steroNoteUtil = new SteroNoteUtil();
 
         loadFeatures();

@@ -120,7 +120,7 @@ public class RadioService {
 
 				if(position == (playSettings.isReverseMode() ? 0 : song.getLength())) {
 					timer.cancel();
-					playRadioSong(gMusicMain.getPlayService().getShuffleSong(radioUUID, song), gMusicMain.getConfigService().PS_TIME_UNTIL_SHUFFLE);
+					playRadioSong(gMusicMain.getPlayService().getContinueSong(radioUUID, song), gMusicMain.getConfigService().PS_TIME_UNTIL_DEFAULT);
 				} else {
 					playState.setTickPosition(playSettings.isReverseMode() ? position - 1 : position + 1);
 					if(gMusicMain.getConfigService().A_SHOW_WHILE_PLAYING) {
