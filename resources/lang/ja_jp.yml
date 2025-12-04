@@ -94,7 +94,7 @@ MusicGUI:
   music-options-particle: "&aパーティクル表示:&6 %Particle%"
   music-options-reverse: "&a逆再生:&6 %Reverse%"
   music-options-range: "&a可聴範囲:&b %Range%"
-  music-options-speaker-mode: "&aスピーカーモード:&6 %SpeakerMode%&7 (周りの人に聞かせることができます)"
+  music-options-speaker-mode: "&aスピーカーモード:&6 %SpeakerMode%&7 (範囲: &b%Range%&7ブロック)"
   music-options-speaker-range: "&7範囲:&b %Range%&7 ブロック"
   music-options-mute-speakers: "&a他人のスピーカーをミュート:&6 %MuteSpeakers%"
   

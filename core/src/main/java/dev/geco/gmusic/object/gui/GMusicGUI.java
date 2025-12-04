@@ -148,8 +148,24 @@ public class GMusicGUI {
 							if(target == null) return;
 							gMusicMain.getPlayService().playSong(target, gMusicMain.getPlayService().getNextSong(target));
 						} else {
-							playSettings.setShowParticles(click == ClickType.MIDDLE ? gMusicMain.getConfigService().PS_D_PARTICLES : !playSettings.isShowingParticles());
-							itemMeta.setDisplayName(gMusicMain.getMessageService().getMessage("MusicGUI.music-options-particle", "%Particle%", gMusicMain.getMessageService().getMessage(playSettings.isShowingParticles() ? "MusicGUI.music-options-true" : "MusicGUI.music-options-false")));
+							// スピーカーモードの切り替えと範囲調整
+							if(!gMusicMain.getConfigService().G_DISABLE_SPEAKER_MODE) {
+								if(click == ClickType.SHIFT_LEFT || click == ClickType.SHIFT_RIGHT) {
+									// Shiftクリック: 範囲調整（±5ブロック）
+									long range = playSettings.getSpeakerRange();
+									long step = 5;
+									long newRange = click == ClickType.SHIFT_RIGHT ? Math.max(range - step, 5) : Math.min(range + step, gMusicMain.getConfigService().MAX_SPEAKER_RANGE);
+									playSettings.setSpeakerRange(newRange);
+								} else if(click == ClickType.MIDDLE) {
+									// ミドルクリック: デフォルトにリセット
+									playSettings.setSpeakerMode(gMusicMain.getConfigService().PS_D_SPEAKER_MODE);
+									playSettings.setSpeakerRange(gMusicMain.getConfigService().SPEAKER_DEFAULT_RANGE);
+								} else {
+									// 左/右クリック: ON/OFF切り替え
+									playSettings.setSpeakerMode(!playSettings.isSpeakerMode());
+								}
+								setOptionsBar(); // オプションバーを再描画
+							}
 						}
 					}
 					case 48 -> {
@@ -397,9 +413,17 @@ public class GMusicGUI {
 		inventory.setItem(46, itemStack);
 		
 		if(!gMusicMain.getConfigService().G_DISABLE_SPEAKER_MODE) {
-			itemStack = new ItemStack(Material.NOTE_BLOCK);
+			itemStack = new ItemStack(Material.JUKEBOX);
 			itemMeta = itemStack.getItemMeta();
-			itemMeta.setDisplayName(gMusicMain.getMessageService().getMessage("MusicGUI.music-options-speaker-mode", "%SpeakerMode%", gMusicMain.getMessageService().getMessage(playSettings.isSpeakerMode() ? "MusicGUI.music-options-true" : "MusicGUI.music-options-false")));
+			itemMeta.setDisplayName(gMusicMain.getMessageService().getMessage("MusicGUI.music-options-speaker-mode",
+				"%SpeakerMode%", gMusicMain.getMessageService().getMessage(playSettings.isSpeakerMode() ? "MusicGUI.music-options-true" : "MusicGUI.music-options-false"),
+				"%Range%", "" + playSettings.getSpeakerRange()));
+			List<String> lore = new ArrayList<>();
+			lore.add(gMusicMain.getMessageService().toFormattedMessage("&7範囲: &b" + playSettings.getSpeakerRange() + "&7 ブロック"));
+			lore.add(gMusicMain.getMessageService().toFormattedMessage("&7左/右クリック: ON/OFF"));
+			lore.add(gMusicMain.getMessageService().toFormattedMessage("&7Shift+左/右: 範囲±5"));
+			lore.add(gMusicMain.getMessageService().toFormattedMessage("&7ミドルクリック: リセット"));
+			itemMeta.setLore(lore);
 			itemMeta.addItemFlags(ItemFlag.values());
 			itemStack.setItemMeta(itemMeta);
 			inventory.setItem(47, itemStack);

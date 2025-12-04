@@ -1,7 +1,7 @@
 Lang:
 
   # Plugin language
-  lang: en_us
+  lang: ja_jp
 
   # Send messages to clients in their own language, if available
   client-lang: true
@@ -9,7 +9,7 @@ Lang:
 Options:
 
   # Plugin sends update notifications
-  check-for-update: true
+  check-for-update: false
 
   # List of worlds where all features are disabled
   WorldBlacklist: []
@@ -20,13 +20,19 @@ Options:
     extened-range: true
 
     # Defines whether the resource pack should be automatically downloaded and applied to the user
-    force-resources: true
+    force-resources: false
 
   # Defines the range a player can hear the sound of a jukebox
   jukebox-range: 50
 
   # Defines the max range of a jukebox
-  max-jukebox-range: 500
+  max-jukebox-range: 50
+
+  # Defines the default range for speaker mode
+  speaker-default-range: 30
+
+  # Defines the max range of speaker mode
+  max-speaker-range: 100
 
   ActionBar:
 
@@ -55,6 +61,9 @@ Options:
     # Defines the wait time until a song repeats
     time-until-repeat: 1000
 
+    # Defines the wait time until a song to the next
+    time-until-continue: 1000
+
     # Defines whether the settings of a player should be saved on quit
     save-on-quit: true
 
@@ -64,8 +73,10 @@ Options:
       volume: 70
       join: false
       play-mode: 0
-      particles: false
       reverse: false
+      particles: false
+      speaker-mode: false
+      mute-speakers: false
 
   GUI:
 
@@ -73,3 +84,5 @@ Options:
     disable-playlist: false
     disable-options: false
     disable-search: false
+    disable-speaker-mode: false
+    disable-favorites: false
