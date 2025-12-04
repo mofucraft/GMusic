@@ -25,8 +25,22 @@ public class PlaySettingsService {
 
 	public void createTables() {
 		try {
-			gMusicMain.getDataService().execute("CREATE TABLE IF NOT EXISTS gmusic_play_settings (uuid TEXT, playListMode INTEGER, volume INTEGER, playOnJoin INTEGER, playMode INTEGER, showParticles INTEGER, reverseMode INTEGER, toggleMode INTEGER, range INTEGER, currentSong TEXT);");
+			gMusicMain.getDataService().execute("CREATE TABLE IF NOT EXISTS gmusic_play_settings (uuid TEXT, playListMode INTEGER, volume INTEGER, playOnJoin INTEGER, playMode INTEGER, showParticles INTEGER, reverseMode INTEGER, toggleMode INTEGER, range INTEGER, currentSong TEXT, speakerMode INTEGER DEFAULT 0, speakerRange INTEGER DEFAULT 20, muteSpeakers INTEGER DEFAULT 0, currentCategory TEXT DEFAULT NULL);");
 			gMusicMain.getDataService().execute("CREATE TABLE IF NOT EXISTS gmusic_play_settings_favorites (uuid TEXT, songId TEXT);");
+
+			// Add new columns to existing tables if they don't exist
+			try {
+				gMusicMain.getDataService().execute("ALTER TABLE gmusic_play_settings ADD COLUMN speakerMode INTEGER DEFAULT 0;");
+			} catch(Throwable ignored) {}
+			try {
+				gMusicMain.getDataService().execute("ALTER TABLE gmusic_play_settings ADD COLUMN speakerRange INTEGER DEFAULT 20;");
+			} catch(Throwable ignored) {}
+			try {
+				gMusicMain.getDataService().execute("ALTER TABLE gmusic_play_settings ADD COLUMN muteSpeakers INTEGER DEFAULT 0;");
+			} catch(Throwable ignored) {}
+			try {
+				gMusicMain.getDataService().execute("ALTER TABLE gmusic_play_settings ADD COLUMN currentCategory TEXT DEFAULT NULL;");
+			} catch(Throwable ignored) {}
 		} catch(Throwable e) { gMusicMain.getLogger().log(Level.SEVERE, "Could not create play settings database tables!", e); }
 	}
 
@@ -57,7 +71,11 @@ public class PlaySettingsService {
 							playSettingsData.getBoolean("toggleMode"),
 							playSettingsData.getLong("range"),
 							playSettingsData.getString("currentSong"),
-							favorites
+							favorites,
+							playSettingsData.getBoolean("speakerMode"),
+							playSettingsData.getLong("speakerRange"),
+							playSettingsData.getBoolean("muteSpeakers"),
+							playSettingsData.getString("currentCategory")
 					);
 				}
 			}
@@ -80,11 +98,15 @@ public class PlaySettingsService {
 				gMusicMain.getConfigService().R_PLAY_ON_JOIN,
 				GPlayMode.byId(gMusicMain.getConfigService().PS_D_PLAY_MODE),
 				gMusicMain.getConfigService().PS_D_PARTICLES,
-				gMusicMain.getConfigService().PS_D_REVERSE,
+				false,  // 逆再生を無効化
 				false,
 				0,
 				null,
-				new ArrayList<>()
+				new ArrayList<>(),
+				gMusicMain.getConfigService().PS_D_SPEAKER_MODE,
+				gMusicMain.getConfigService().SPEAKER_DEFAULT_RANGE,
+				gMusicMain.getConfigService().PS_D_MUTE_SPEAKERS,
+				null
 		);
 	}
 
@@ -100,7 +122,7 @@ public class PlaySettingsService {
 
 			playSettingsCache.put(uuid, playSettings);
 
-			gMusicMain.getDataService().execute("INSERT INTO gmusic_play_settings (uuid, playListMode, volume, playOnJoin, playMode, showParticles, reverseMode, toggleMode, range, currentSong) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+			gMusicMain.getDataService().execute("INSERT INTO gmusic_play_settings (uuid, playListMode, volume, playOnJoin, playMode, showParticles, reverseMode, toggleMode, range, currentSong, speakerMode, speakerRange, muteSpeakers, currentCategory) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
 					uuid.toString(),
 					playSettings.getPlayListMode().getId(),
 					playSettings.getVolume(),
@@ -110,7 +132,11 @@ public class PlaySettingsService {
 					playSettings.isReverseMode(),
 					playSettings.isToggleMode(),
 					playSettings.getRange(),
-					playSettings.getCurrentSong()
+					playSettings.getCurrentSong(),
+					playSettings.isSpeakerMode(),
+					playSettings.getSpeakerRange(),
+					playSettings.isMuteSpeakers(),
+					playSettings.getCurrentCategory()
 			);
 
 			if(playSettings.getFavorites().isEmpty()) return;

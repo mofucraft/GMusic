@@ -1,28 +1,363 @@
 # [GMusic](https://github.com/Gecolay/GMusic) - [GPlugin](https://discord.gg/Cy2P4AU)
 
-## Welcome to the repository
+## リポジトリへようこそ
 
-This repository contains the GMusic project from the GPlugins series!
+このリポジトリにはGPluginsシリーズのGMusicプロジェクトが含まれています！
 
-- Website: [GMusic - Spigot](https://www.spigotmc.org/resources/GMusic.000000/)
+- ウェブサイト: [GMusic - Spigot](https://www.spigotmc.org/resources/GMusic.000000/)
 - GitHub: [GMusic - GitHub](https://github.com/Gecolay/GMusic)
 - Discord: [GPlugins - Discord](https://discord.gg/Cy2P4AU)
 
-## Local development
+## 機能
 
-### Local project
+### コア機能
 
-Clone the repository:
+- **個人用音楽プレイヤー**: 個別のプレイヤーにカスタム音楽を再生
+- **Jukeboxシステム**: 特別なJukeboxを設置し、近くのプレイヤーに距離減衰付きで音楽を配信
+- **Radioモード**: 参加しているすべてのプレイヤーにグローバル音楽配信
+- **音楽フォーマット**: NBS（Note Block Studio）とMIDIファイルのGNBS形式への変換をサポート
+
+### プレイヤー機能
+
+#### 🔊 スピーカーモード（新機能）
+あなたの音楽を近くのプレイヤーに配信！有効にすると:
+- 範囲内のプレイヤー（デフォルト20ブロック、5-100で調整可能）があなたの音楽を聴ける
+- 距離に応じて自然に音量が減少
+- あなたの頭上に音符のパーティクルが表示される（他人から見える）
+- 他のプレイヤーはあなたのスピーカーをミュートできる
+
+**GUI操作（オプションメニュー）**:
+- **ベルアイコン（スロット51）**: スピーカーモードの切り替えと範囲調整
+  - 左/右クリック: スピーカーモードのON/OFF
+  - Shift + 左/右クリック: 範囲を調整（±5ブロック）
+  - ミドルクリック: デフォルトにリセット（OFF、20ブロック）
+- **鉄格子アイコン（スロット52）**: 他人のスピーカーをミュート
+  - 左/右クリック: ミュートの切り替え
+  - ミドルクリック: ミュート解除にリセット
+
+#### 📁 音楽カテゴリ（新機能）
+フォルダで音楽ライブラリを整理:
+- `songs/`フォルダ内にサブディレクトリを作成
+- 各フォルダがGUIでカテゴリになる
+- メインメニューの**本棚アイコン（スロット51）**でカテゴリをナビゲート
+  - 左クリック: 次のカテゴリ
+  - 右クリック: 前のカテゴリ
+  - サイクル: すべての曲 → カテゴリ1 → カテゴリ2 → ... → すべての曲
+
+### 音楽再生モード
+
+- **デフォルト**: 曲を1回再生
+- **シャッフル**: リスト内の次の曲を自動再生
+- **ループ**: 現在の曲をリピート
+- **逆再生モード**: 曲を逆再生
+- **お気に入り**: お気に入りの曲でプレイリストを作成
+
+### カスタマイズ
+
+- **音量調整**: 0-100%で調整可能
+- **パーティクルエフェクト**: 再生中の音符パーティクルの切り替え
+- **参加時に再生**: サーバー参加時に自動的に音楽を開始
+- **検索**: タイトルで曲を検索
+- **プレイヤー別設定**: すべての設定がプレイヤーごとに保存される
+
+## セットアップガイド
+
+### インストール
+
+1. 最新の`GMusic-x.x-x.jar`をリリースからダウンロード
+2. サーバーの`plugins/`フォルダに配置
+3. サーバーを再起動
+4. 必要に応じて`plugins/GMusic/config.yml`で設定
+
+### 音楽ファイルのセットアップ
+
+#### ディレクトリ構造
+```
+plugins/GMusic/
+├── songs/          # 変換済み音楽ファイル (.gnbs)
+│   ├── song1.gnbs
+│   ├── song2.gnbs
+│   ├── Rock/       # カテゴリフォルダ（新機能）
+│   │   ├── rock1.gnbs
+│   │   └── rock2.gnbs
+│   └── Classical/  # 別のカテゴリ（新機能）
+│       └── classical1.gnbs
+├── nbs/            # .nbsファイルを配置して自動変換
+│   └── example.nbs
+└── midi/           # .midファイルを配置して自動変換
+    └── example.mid
+```
+
+#### サポートされているフォーマット
+
+**NBS（Note Block Studio）**:
+1. `.nbs`ファイルを作成またはダウンロード
+2. `plugins/GMusic/nbs/`フォルダに配置
+3. サーバーを再起動またはプラグインをリロード
+4. ファイルが自動的に`.gnbs`形式に変換され`songs/`フォルダに表示される
+
+**MIDIファイル**:
+1. `.mid`または`.midi`ファイルを`plugins/GMusic/midi/`フォルダに配置
+2. サーバーを再起動またはプラグインをリロード
+3. ファイルが自動的に`.gnbs`形式に変換され`songs/`フォルダに表示される
+
+**直接GNBS**:
+- `.gnbs`ファイルを直接`plugins/GMusic/songs/`フォルダに配置
+- カテゴリ用にサブディレクトリで整理可能（新機能）
+
+#### 自動変換プロセス
+
+プラグインは起動時にNBSとMIDIファイルを自動変換します:
+- `nbs/`と`midi/`フォルダの新しいファイルをチェック
+- `.gnbs`としてまだ存在しないファイルのみを変換
+- 変換されたファイルは`songs/`フォルダに表示される
+- 元のNBS/MIDIファイルはそのフォルダに残る
+
+### Jukeboxのセットアップ
+
+1. ワールド内にJukeboxブロックを設置
+2. 右クリックして音楽GUIを開く
+3. そのJukeboxから再生する曲を選択
+4. 範囲内の近くのプレイヤーが音楽を聴く
+5. オプションで範囲を調整（オプションメニューのスロット51）
+
+**Jukebox機能**:
+- 距離ベースの音量（近いほど大きい）
+- 設定可能な範囲（デフォルト50、最大500ブロック）
+- Jukeboxごとに永続的な設定
+- Jukebox位置に音符パーティクルが表示される
+
+### コマンド
+
+- `/music play <曲名>` - 特定の曲を再生
+- `/music playing` - 現在再生中の曲を表示
+- `/music random` - ランダムな曲を再生
+- `/music stop` - 現在の曲を停止
+- `/music pause` - 現在の曲を一時停止
+- `/music resume` - 一時停止した曲を再開
+- `/music skip` - 次の曲にスキップ
+- `/music toggle` - 音楽のON/OFFを切り替え
+
+## 設定
+
+### 主要設定（`config.yml`）
+
+```yaml
+Options:
+  # Jukebox設定
+  jukebox-range: 50           # デフォルトのJukebox聴取範囲
+  max-jukebox-range: 500      # Jukeboxの最大範囲
+
+  # スピーカーモード設定（新機能）
+  speaker-default-range: 20   # デフォルトのスピーカーモード範囲
+  max-speaker-range: 100      # スピーカーモードの最大範囲
+
+  # サウンド設定
+  Sound:
+    extened-range: true       # 拡張音域を使用（リソースパックが必要）
+    force-resources: true     # リソースパックをプレイヤーに自動適用
+
+  # 環境エフェクト
+  environment-effects: true   # 水中で特殊なサウンドエフェクト
+
+  # GUIオプション
+  GUI:
+    disable-random-song: false
+    disable-playlist: false
+    disable-options: false
+    disable-search: false
+    disable-speaker-mode: false  # スピーカーモード機能を無効化（新機能）
+
+  # デフォルトのプレイヤー設定
+  PlayerSettings:
+    Default:
+      volume: 70
+      particles: false
+      play-mode: 0            # 0=デフォルト, 1=シャッフル, 2=ループ
+```
+
+### 言語ファイル
+
+プラグインは複数の言語をサポートしています。`plugins/GMusic/lang/`のファイルを編集:
+- `en_us.yml` - 英語（米国）
+- `de_de.yml` - ドイツ語
+- 独自の言語ファイルを追加可能
+
+**新しい翻訳キー**（カスタム言語ファイル用）:
+```yaml
+MusicGUI:
+  music-options-speaker-mode: "&aスピーカーモード:&6 %SpeakerMode%"
+  music-options-speaker-range: "&7範囲:&b %Range%&7 ブロック"
+  music-options-mute-speakers: "&a他人のスピーカーをミュート:&6 %MuteSpeakers%"
+  music-category-all: "&eすべてのカテゴリ"
+  music-category: "&eカテゴリ:&6 %Category%"
+```
+
+## データベース
+
+プレイヤー設定はSQLiteデータベース（`plugins/GMusic/data.db`）に保存されます:
+
+**テーブル**:
+- `gmusic_play_settings` - プレイヤーの設定（音量、モード、スピーカー設定）
+- `gmusic_play_settings_favorites` - プレイヤーごとのお気に入り曲
+- `gmusic_juke_box` - Jukeboxの位置と設定
+
+**新しいフィールド**:
+- `speakerMode` - スピーカーモードの有効/無効
+- `speakerRange` - スピーカー配信範囲
+- `muteSpeakers` - 他人のスピーカーをミュート
+- `currentCategory` - 最後に選択したカテゴリ
+
+## 開発
+
+### ローカルプロジェクト
+
+リポジトリをクローン:
 ```bash
 git clone https://github.com/Gecolay/GMusic.git
 ```
 
-### Build
+### ビルド
 
-Run the `gradlew clean build` command.
+`gradlew clean build`コマンドを実行。
 
-The final `GMusic-x.x-x.jar` file will be in the [`build/libs`](./build/libs) folder.
+最終的な`GMusic-x.x-x.jar`ファイルは[`build/libs`](./build/libs)フォルダにあります。
 
-## Pull requests
+### プロジェクト構造
 
-You can create a pull request to submit your code to this repository: [Pull requests](https://github.com/Gecolay/GMusic/pulls)
+```
+GMusic/
+├── core/                           # コアプラグインコード
+│   └── src/main/java/dev/geco/gmusic/
+│       ├── object/                # データモデル
+│       │   ├── GPlaySettings.java # プレイヤー設定モデル
+│       │   ├── GSong.java         # 曲データモデル
+│       │   └── gui/               # GUIクラス
+│       │       └── GMusicGUI.java # メイン音楽GUI
+│       └── service/               # ビジネスロジック
+│           ├── PlayService.java   # 音楽再生とスピーカーモード
+│           ├── JukeBoxService.java # Jukebox機能
+│           ├── RadioService.java  # Radio配信
+│           ├── SongService.java   # 曲読み込みとカテゴリ
+│           ├── ConfigService.java # 設定管理
+│           └── PlaySettingsService.java # プレイヤー設定とデータベース
+├── resources/
+│   ├── config.yml                 # メイン設定
+│   └── lang/                      # 言語ファイル
+│       ├── en_us.yml
+│       └── de_de.yml
+└── build.gradle                   # ビルド設定
+```
+
+### 主要な実装詳細
+
+**スピーカーモード** ([PlayService.java](core/src/main/java/dev/geco/gmusic/service/PlayService.java)):
+- `getSpeakerListeners()`: 範囲内のプレイヤーを検索し、ミュート設定を尊重
+- 距離ベースの音量計算式: `(distance - range) * sourceVolume / -range`
+- ゲームティック（50ms）ごとに音量減衰を適用して音を配信
+- 発信源プレイヤーの頭上にパーティクルを生成
+
+**カテゴリシステム** ([SongService.java](core/src/main/java/dev/geco/gmusic/service/SongService.java)):
+- `loadSongsFromDirectory()`: `songs/`フォルダを再帰的にスキャン
+- サブディレクトリがカテゴリになる
+- 大文字小文字を区別しないTreeMapでカテゴリをソート
+
+**GUI統合** ([GMusicGUI.java](core/src/main/java/dev/geco/gmusic/object/gui/GMusicGUI.java)):
+- 6x9インベントリベースのGUI
+- ボトムバー（スロット45-53）でコントロール
+- 設定用のオプションメニュー
+- コンテキストに応じた動的スロット割り当て
+
+## トラブルシューティング
+
+### 音楽が再生されない
+- 拡張音域を使用している場合、プレイヤーがリソースパックを受け入れているか確認
+- プレイヤーが音楽をオフにしていないか確認（`/music toggle`）
+- `songs/`フォルダに`.gnbs`形式の曲ファイルがあることを確認
+
+### スピーカーモードが動作しない
+- config.ymlで`disable-speaker-mode: false`になっているか確認
+- プレイヤーが範囲内（デフォルト20ブロック）にいることを確認
+- リスナーがスピーカーをミュートしていないか確認
+- GUIでスピーカーモードが有効になっているか確認（オプション → ベルアイコン）
+
+### カテゴリが表示されない
+- `songs/`ディレクトリ内にフォルダが存在することを確認
+- フォルダ内に`.gnbs`ファイルが含まれていることを確認
+- フォルダ追加後にプラグインをリロード: `/gmusic reload`
+
+### 変換が動作しない
+- NBSファイルは`nbs/`フォルダに配置（`songs/`ではない）
+- MIDIファイルは`midi/`フォルダに配置（`songs/`ではない）
+- 再変換が必要な場合、対応する`.gnbs`ファイルを削除
+- サーバーコンソールで変換エラーを確認
+
+## プルリクエスト
+
+このリポジトリにコードを送信するためのプルリクエストを作成できます: [Pull requests](https://github.com/Gecolay/GMusic/pulls)
+
+## ライセンス
+
+ライセンス情報についてはリポジトリを参照してください。
+
+## クレジット
+
+- オリジナルGMusicプラグイン by Gecolay
+- 新機能: スピーカーモード、音楽カテゴリ
+- コミュニティからの貢献を歓迎します！
+
+## 変更履歴
+
+### 2025-12-04 - カスタム改造版
+**GUI レイアウトの最適化**
+- 曲表示エリアを45スロットから36スロット(6行→4行)に変更
+- カテゴリボタンを常時表示(スロット36-44)に配置
+  - スロット36: 全曲ボタン(本棚アイコン)
+  - スロット37-44: カテゴリボタン(8色の異なる染料アイコン)
+- お気に入り追加ボタンをスロット52に配置
+
+**機能の追加・変更**
+- 再生モードに「カテゴリ内プレイ」を追加(以前のPLAYLISTから名称変更)
+- スピーカーモードをオプション画面に追加(デフォルトOFF)
+- パーティクル表示機能を削除(スピーカーモード時は自動ON)
+- リバース(逆再生)機能を削除
+- ウェルカムミュージック(参加時自動再生)機能を削除
+- ログイン時の自動再生を無効化
+
+**設定ファイルの変更**
+- `config.yml`から`particles`と`reverse`の設定を削除
+- `disable-options`のデフォルトをfalseに変更
+- スピーカーモードのデフォルトをfalseに設定
+
+**言語ファイルの更新**
+- `music-options-play-mode-category`(カテゴリ内プレイ)を追加
+- `music-category-all`(全ての曲)を追加
+- `music-add-favorite`(お気に入りに追加)を追加
+
+**データベース**
+- お気に入り機能用のテーブル構造を維持
+- `config.yml`で`disable-favorites: false`により有効化
+
+### 2025-12-04 以前
+(以前の変更履歴は上記の「変更履歴 (2025-12-04)」セクションを参照)
+
+### UIの変更
+- **スピーカートグルスイッチの移動**: スピーカートグルボタン（ベルアイコン）をオプションメニューからデフォルトバーのスロット51に移動しました。これにより、メイン画面から直接スピーカーモードを切り替えられるようになりました。
+- **カテゴリ一覧の常時表示**: カテゴリ一覧をGUIの底部の一段上（行5、スロット36-44）に常時表示するようにしました。これにより、カテゴリ間の移動がスムーズになりました。
+- **曲リストの表示領域変更**: カテゴリ一覧の表示に伴い、曲リストの表示領域を行1-4（スロット0-35）に変更しました。
+- **オプション画面のUI改善**: オプション画面を開いているときは、曲リストとカテゴリボタンを非表示にして、設定画面に集中できるようにしました。
+
+### 機能追加・変更
+- **プレイリスト内シャッフル**: 再生モードの「シャッフル」の挙動を変更し、現在選択されているプレイリスト（お気に入り、カテゴリ、または全曲）の中からランダムに曲を選んで再生するようにしました。
+- **パーティクル表示の改善**: スピーカーモードがOFFの時は、自分自身にも音符パーティクルを表示しないように変更しました。「パーティクル表示」設定がONでも、スピーカーモードがOFFであればパーティクルは出ません。
+- **カテゴリ選択の修正**: カテゴリボタンをクリックした際に、正しくカテゴリの曲が表示されるように修正しました。
+
+### 設定・ローカライズ
+- **日本語化**: デフォルトの言語設定を日本語（`ja_jp`）に変更し、日本語の翻訳ファイル（`ja_jp.yml`）を追加しました。
+- **操作説明の追加**:
+    - スピーカーモード: 「(周りの人に聞かせることができます)」という説明を追加
+    - 音量ボタン: 「(左クリック:+5 右クリック:-5)」という操作方法を追加
+- **デフォルト設定の変更**:
+    - 他人のスピーカーモードのミュート設定（`muteSpeakers`）のデフォルトをOFFにしました。
+    - 変換された曲のデフォルト保存先カテゴリを `Default` から `songs` に変更しました。
+    - 逆再生機能をデフォルトで無効化しました（既存のデータベースに逆再生が有効になっている場合は手動でリセットが必要です）。

@@ -51,6 +51,7 @@ public class GMusicGUI {
 	private int page = 1;
 	private boolean searchMode = false;
 	private String searchKey = null;
+	private String currentCategory = null;
 	private final GPlaySettings playSettings;
 
 	public GMusicGUI(UUID uuid, MenuType type) {
@@ -94,6 +95,28 @@ public class GMusicGUI {
 				HumanEntity clicker = event.getWhoClicked();
 				int slot = event.getRawSlot();
 				switch(slot) {
+					case 36, 37, 38, 39, 40, 41, 42, 43, 44 -> {
+						// カテゴリ切り替え処理
+						if(!optionState) {
+							if(slot == 36) {
+								// 全曲ボタン
+								currentCategory = null;
+								playSettings.setCurrentCategory(null);
+								setPage(1);
+								setDefaultBar();
+							} else {
+								// カテゴリボタン
+								List<String> categories = gMusicMain.getSongService().getCategories();
+								int categoryIndex = slot - 37;
+								if(categoryIndex < categories.size()) {
+									currentCategory = categories.get(categoryIndex);
+									playSettings.setCurrentCategory(currentCategory);
+									setPage(1);
+									setDefaultBar();
+								}
+							}
+						}
+					}
 					case 45 -> {
 						if(!optionState) {
 							GPlayState songSettings = gMusicMain.getPlayService().getPlayState(uuid);
@@ -103,6 +126,7 @@ public class GMusicGUI {
 							else gMusicMain.getPlayService().pauseSong(target);
 						} else {
 							setDefaultBar();
+							setPage(page);  // オプションから戻る際に曲リストを再表示
 						}
 					}
 					case 46 -> {
@@ -136,8 +160,8 @@ public class GMusicGUI {
 							if(target == null) return;
 							gMusicMain.getPlayService().playSong(target, gMusicMain.getPlayService().getRandomSong(uuid));
 						} else {
-							playSettings.setPlayOnJoin(click == ClickType.MIDDLE ? gMusicMain.getConfigService().R_PLAY_ON_JOIN : !playSettings.isPlayOnJoin());
-							itemMeta.setDisplayName(gMusicMain.getMessageService().getMessage("MusicGUI.music-options-join", "%Join%", gMusicMain.getMessageService().getMessage(playSettings.isPlayOnJoin() ? "MusicGUI.music-options-true" : "MusicGUI.music-options-false")));
+							playSettings.setMuteSpeakers(click == ClickType.MIDDLE ? gMusicMain.getConfigService().PS_D_MUTE_SPEAKERS : !playSettings.isMuteSpeakers());
+							itemMeta.setDisplayName(gMusicMain.getMessageService().getMessage("MusicGUI.music-options-mute-speakers", "%MuteSpeakers%", gMusicMain.getMessageService().getMessage(playSettings.isMuteSpeakers() ? "MusicGUI.music-options-true" : "MusicGUI.music-options-false")));
 						}
 					}
 					case 49 -> {
@@ -161,36 +185,29 @@ public class GMusicGUI {
 							int playModeId = playSettings.getPlayMode().getId();
 							GPlayMode playMode = GPlayMode.byId(click == ClickType.MIDDLE ? gMusicMain.getConfigService().PS_D_PLAY_MODE : (click == ClickType.RIGHT ? (playModeId - 1 < 0 ? GPlayMode.values().length - 1 : playModeId - 1) : (playModeId + 1 > GPlayMode.values().length - 1 ? 0 : playModeId + 1)));
 							playSettings.setPlayMode(playMode);
-							itemMeta.setDisplayName(gMusicMain.getMessageService().getMessage(playMode == GPlayMode.DEFAULT ? "MusicGUI.music-options-play-mode-once" : playMode == GPlayMode.SHUFFLE ? "MusicGUI.music-options-play-mode-shuffle" : "MusicGUI.music-options-play-mode-repeat"));
+							itemMeta.setDisplayName(gMusicMain.getMessageService().getMessage(playMode == GPlayMode.DEFAULT ? "MusicGUI.music-options-play-mode-once" : playMode == GPlayMode.SHUFFLE ? "MusicGUI.music-options-play-mode-shuffle" : playMode == GPlayMode.LOOP ? "MusicGUI.music-options-play-mode-repeat" : "MusicGUI.music-options-play-mode-category"));
 						}
 					}
 					case 50 -> {
 						if(!optionState) {
 							setOptionsBar();
-						} else {
-							if(playSettings.getPlayListMode() == GPlayListMode.RADIO) return;
-							playSettings.setReverseMode(click == ClickType.MIDDLE ? gMusicMain.getConfigService().PS_D_REVERSE : !playSettings.isReverseMode());
-							itemMeta.setDisplayName(gMusicMain.getMessageService().getMessage("MusicGUI.music-options-reverse", "%Reverse%", gMusicMain.getMessageService().getMessage(playSettings.isReverseMode() ? "MusicGUI.music-options-true" : "MusicGUI.music-options-false")));
 						}
 					}
 					case 51 -> {
 						if(!optionState) {
-							if(playSettings.getPlayListMode() == GPlayListMode.RADIO) return;
-							IGMusicInputGUI inputGUI = getInputGUIInstance((input) -> {
-								searchKey = input;
-								setPage(1);
-								setDefaultBar();
-								clicker.openInventory(inventory);
-								searchMode = false;
-								return true;
-							}, ItemMeta::getDisplayName);
-							ItemStack nameItem = new ItemStack(Material.NAME_TAG);
-							ItemMeta nameItemMeta = nameItem.getItemMeta();
-							nameItemMeta.setDisplayName(gMusicMain.getMessageService().getMessage("MusicGUI.music-search-menu-field"));
-							nameItem.setItemMeta(nameItemMeta);
-							searchKey = null;
-							searchMode = true;
-							inputGUI.open(clicker, gMusicMain.getMessageService().getMessage("MusicGUI.music-search-menu-title"), nameItem);
+							// お気に入り追加/削除
+							if(!gMusicMain.getConfigService().G_DISABLE_FAVORITES && playSettings.getPlayListMode() != GPlayListMode.RADIO) {
+								GPlayState songState = gMusicMain.getPlayService().getPlayState(uuid);
+								if(songState != null && songState.getSong() != null) {
+									GSong currentSong = songState.getSong();
+									if(playSettings.getFavorites().contains(currentSong)) {
+										playSettings.getFavorites().remove(currentSong);
+									} else {
+										playSettings.getFavorites().add(currentSong);
+									}
+									setDefaultBar();
+								}
+							}
 						} else {
 							if(type != MenuType.JUKEBOX) return;
 							long range = playSettings.getRange();
@@ -200,10 +217,14 @@ public class GMusicGUI {
 							itemMeta.setDisplayName(gMusicMain.getMessageService().getMessage("MusicGUI.music-options-range", "%Range%", "" + newRange));
 						}
 					}
-					case 52 -> setPage(page - 1);
-					case 53 -> setPage(page + 1);
+					case 52 -> {
+						setPage(page - 1);
+					}
+					case 53 -> {
+						setPage(page + 1);
+					}
 					default -> {
-						if(slot < 0 || slot > 44) return;
+						if(slot < 0 || slot > 35) return;
 						GSong song = pageSongs.get(slot);
 						Player target = Bukkit.getPlayer(uuid);
 						if(target == null || song == null) return;
@@ -294,12 +315,24 @@ public class GMusicGUI {
 			inventory.setItem(50, itemStack);
 		}
 
-		if(!gMusicMain.getConfigService().G_DISABLE_SEARCH && playSettings.getPlayListMode() != GPlayListMode.RADIO) {
-			itemStack = new ItemStack(Material.OAK_SIGN);
-			itemMeta = itemStack.getItemMeta();
-			itemMeta.setDisplayName(searchKey == null || searchKey.isEmpty() ? gMusicMain.getMessageService().getMessage("MusicGUI.music-search-none") : gMusicMain.getMessageService().getMessage("MusicGUI.music-search", "%Search%", searchKey));
-			itemStack.setItemMeta(itemMeta);
-			inventory.setItem(51, itemStack);
+		// カテゴリーボタン（スロット36-44）
+		setCategoryBar();
+
+		// お気に入り追加ボタン（スロット51、disable-favoritesがfalseの場合のみ）
+		if(!gMusicMain.getConfigService().G_DISABLE_FAVORITES && playSettings.getPlayListMode() != GPlayListMode.RADIO) {
+			GPlayState songState = gMusicMain.getPlayService().getPlayState(uuid);
+			if(songState != null && songState.getSong() != null) {
+				GSong currentSong = songState.getSong();
+				itemStack = new ItemStack(Material.NETHER_STAR);
+				itemMeta = itemStack.getItemMeta();
+				itemMeta.setDisplayName(gMusicMain.getMessageService().getMessage("MusicGUI.music-add-favorite"));
+				if(playSettings.getFavorites().contains(currentSong)) {
+					itemMeta.addEnchant(org.bukkit.enchantments.Enchantment.UNBREAKING, 1, true);
+					itemMeta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
+				}
+				itemStack.setItemMeta(itemMeta);
+				inventory.setItem(51, itemStack);
+			}
 		}
 
 		setPauseResumeBar();
@@ -346,39 +379,44 @@ public class GMusicGUI {
 
 		clearBar();
 
+		// オプション中は曲リストとカテゴリボタンを非表示にする
+		for(int slot = 0; slot < 45; slot++) {
+			inventory.setItem(slot, null);
+		}
+
 		ItemStack itemStack = new ItemStack(Material.CHEST);
 		ItemMeta itemMeta = itemStack.getItemMeta();
 		itemMeta.setDisplayName(gMusicMain.getMessageService().getMessage("MusicGUI.music-back"));
 		itemStack.setItemMeta(itemMeta);
 		inventory.setItem(45, itemStack);
+		
 		itemStack = new ItemStack(Material.MAGMA_CREAM);
 		itemMeta = itemStack.getItemMeta();
 		itemMeta.setDisplayName(gMusicMain.getMessageService().getMessage("MusicGUI.music-options-volume", "%Volume%", "" + playSettings.getVolume()));
 		itemStack.setItemMeta(itemMeta);
 		inventory.setItem(46, itemStack);
-		itemStack = new ItemStack(Material.FIREWORK_ROCKET);
-		itemMeta = itemStack.getItemMeta();
-		itemMeta.setDisplayName(gMusicMain.getMessageService().getMessage("MusicGUI.music-options-particle", "%Particle%", gMusicMain.getMessageService().getMessage(playSettings.isShowingParticles() ? "MusicGUI.music-options-true" : "MusicGUI.music-options-false")));
-		itemMeta.addItemFlags(ItemFlag.values());
-		itemStack.setItemMeta(itemMeta);
-		inventory.setItem(47, itemStack);
+		
+		if(!gMusicMain.getConfigService().G_DISABLE_SPEAKER_MODE) {
+			itemStack = new ItemStack(Material.NOTE_BLOCK);
+			itemMeta = itemStack.getItemMeta();
+			itemMeta.setDisplayName(gMusicMain.getMessageService().getMessage("MusicGUI.music-options-speaker-mode", "%SpeakerMode%", gMusicMain.getMessageService().getMessage(playSettings.isSpeakerMode() ? "MusicGUI.music-options-true" : "MusicGUI.music-options-false")));
+			itemMeta.addItemFlags(ItemFlag.values());
+			itemStack.setItemMeta(itemMeta);
+			inventory.setItem(47, itemStack);
+		}
 
 		if(playSettings.getPlayListMode() != GPlayListMode.RADIO) {
-			itemStack = new ItemStack(Material.DIAMOND);
+			itemStack = new ItemStack(Material.IRON_BARS);
 			itemMeta = itemStack.getItemMeta();
-			itemMeta.setDisplayName(gMusicMain.getMessageService().getMessage("MusicGUI.music-options-join", "%Join%", gMusicMain.getMessageService().getMessage(playSettings.isPlayOnJoin() ? "MusicGUI.music-options-true" : "MusicGUI.music-options-false")));
+			itemMeta.setDisplayName(gMusicMain.getMessageService().getMessage("MusicGUI.music-options-mute-speakers", "%MuteSpeakers%", gMusicMain.getMessageService().getMessage(playSettings.isMuteSpeakers() ? "MusicGUI.music-options-true" : "MusicGUI.music-options-false")));
 			itemStack.setItemMeta(itemMeta);
 			inventory.setItem(48, itemStack);
+			
 			itemStack = new ItemStack(Material.BLAZE_POWDER);
 			itemMeta = itemStack.getItemMeta();
-			itemMeta.setDisplayName(gMusicMain.getMessageService().getMessage(playSettings.getPlayMode() == GPlayMode.DEFAULT ? "MusicGUI.music-options-play-mode-once" : playSettings.getPlayMode() == GPlayMode.SHUFFLE ? "MusicGUI.music-options-play-mode-shuffle" : "MusicGUI.music-options-play-mode-repeat"));
+			itemMeta.setDisplayName(gMusicMain.getMessageService().getMessage(playSettings.getPlayMode() == GPlayMode.DEFAULT ? "MusicGUI.music-options-play-mode-once" : playSettings.getPlayMode() == GPlayMode.SHUFFLE ? "MusicGUI.music-options-play-mode-shuffle" : playSettings.getPlayMode() == GPlayMode.LOOP ? "MusicGUI.music-options-play-mode-repeat" : "MusicGUI.music-options-play-mode-category"));
 			itemStack.setItemMeta(itemMeta);
 			inventory.setItem(49, itemStack);
-			itemStack = new ItemStack(Material.TOTEM_OF_UNDYING);
-			itemMeta = itemStack.getItemMeta();
-			itemMeta.setDisplayName(gMusicMain.getMessageService().getMessage("MusicGUI.music-options-reverse", "%Reverse%", gMusicMain.getMessageService().getMessage(playSettings.isReverseMode() ? "MusicGUI.music-options-true" : "MusicGUI.music-options-false")));
-			itemStack.setItemMeta(itemMeta);
-			inventory.setItem(50, itemStack);
 		}
 
 		if(type == MenuType.JUKEBOX) {
@@ -394,8 +432,28 @@ public class GMusicGUI {
 		List<GSong> songs = new ArrayList<>();
 
 		if(playSettings.getPlayListMode() != GPlayListMode.RADIO) {
-			songs = playSettings.getPlayListMode() == GPlayListMode.FAVORITES ? playSettings.getFavorites() : gMusicMain.getSongService().getSongs();
-			if(searchKey != null && !searchKey.isEmpty()) songs = gMusicMain.getSongService().filterSongsBySearch(songs, searchKey);
+			// カテゴリが選択されている場合は最初にカテゴリで絞り込む
+			if(currentCategory != null && !currentCategory.isEmpty()) {
+				songs = gMusicMain.getSongService().getSongsByCategory(currentCategory);
+				// FAVORITESモードの場合は、カテゴリ内のお気に入りのみ
+				if(playSettings.getPlayListMode() == GPlayListMode.FAVORITES) {
+					List<GSong> favoriteSongs = new ArrayList<>();
+					for(GSong song : songs) {
+						if(playSettings.getFavorites().contains(song)) {
+							favoriteSongs.add(song);
+						}
+					}
+					songs = favoriteSongs;
+				}
+			} else {
+				// カテゴリが選択されていない場合はプレイリストモードに応じて取得
+				songs = playSettings.getPlayListMode() == GPlayListMode.FAVORITES ? playSettings.getFavorites() : gMusicMain.getSongService().getSongs();
+			}
+			
+			// 検索キーワードがある場合は検索でフィルタ
+			if(searchKey != null && !searchKey.isEmpty()) {
+				songs = gMusicMain.getSongService().filterSongsBySearch(songs, searchKey);
+			}
 		}
 
 		if(newPage > getMaxPageSize(songs.size())) newPage = getMaxPageSize(songs.size());
@@ -403,12 +461,12 @@ public class GMusicGUI {
 
 		page = newPage;
 
-		for(int slot = 0; slot < 45; slot++) inventory.setItem(slot, null);
+		for(int slot = 0; slot < 36; slot++) inventory.setItem(slot, null);
 
 		pageSongs.clear();
 
 		if(!songs.isEmpty()) {
-			for(int songPosition = (page - 1) * 45; songPosition < 45 * page && songPosition < songs.size(); songPosition++) {
+			for(int songPosition = (page - 1) * 36; songPosition < 36 * page && songPosition < songs.size(); songPosition++) {
 				GSong song = songs.get(songPosition);
 				ItemStack itemStack = new ItemStack(song.getDiscMaterial());
 				ItemMeta itemMeta = itemStack.getItemMeta();
@@ -422,10 +480,10 @@ public class GMusicGUI {
 				for(String descriptionRow : song.getDescription()) description.add(gMusicMain.getMessageService().toFormattedMessage("&6" + descriptionRow));
 				if(playSettings.getFavorites().contains(song)) description.add(gMusicMain.getMessageService().getMessage("MusicGUI.disc-favorite"));
 				itemMeta.setLore(description);
-				pageSongs.put(songPosition % 45, song);
+				pageSongs.put(songPosition % 36, song);
 				itemMeta.addItemFlags(ItemFlag.values());
 				itemStack.setItemMeta(itemMeta);
-				inventory.setItem(songPosition % 45, itemStack);
+				inventory.setItem(songPosition % 36, itemStack);
 			}
 		}
 
@@ -443,22 +501,52 @@ public class GMusicGUI {
 			inventory.setItem(52, itemStack);
 		}
 
-		if(page < getMaxPageSize(songs.size())) {
-			ItemStack itemStack = new ItemStack(Material.ARROW);
-			ItemMeta itemMeta = itemStack.getItemMeta();
-			itemMeta.setDisplayName(gMusicMain.getMessageService().getMessage("MusicGUI.next-page"));
-			itemStack.setItemMeta(itemMeta);
-			inventory.setItem(53, itemStack);
+		if(!optionState) {
+			if(page < getMaxPageSize(songs.size())) {
+				ItemStack itemStack = new ItemStack(Material.ARROW);
+				ItemMeta itemMeta = itemStack.getItemMeta();
+				itemMeta.setDisplayName(gMusicMain.getMessageService().getMessage("MusicGUI.next-page"));
+				itemStack.setItemMeta(itemMeta);
+				inventory.setItem(53, itemStack);
+			} else {
+				ItemStack itemStack = new ItemStack(Material.BLACK_STAINED_GLASS_PANE);
+				ItemMeta itemMeta = itemStack.getItemMeta();
+				itemMeta.setDisplayName(" ");
+				itemStack.setItemMeta(itemMeta);
+				inventory.setItem(53, itemStack);
+			}
 		} else {
-			ItemStack itemStack = new ItemStack(Material.BLACK_STAINED_GLASS_PANE);
-			ItemMeta itemMeta = itemStack.getItemMeta();
-			itemMeta.setDisplayName(" ");
-			itemStack.setItemMeta(itemMeta);
-			inventory.setItem(53, itemStack);
+			// オプション中は次のページボタンを非表示
+			inventory.setItem(53, null);
 		}
 	}
 
-	private int getMaxPageSize(int songCount) { return (songCount / 45) + (songCount % 45 == 0 ? 0 : 1); }
+	private int getMaxPageSize(int songCount) { return (songCount / 36) + (songCount % 36 == 0 ? 0 : 1); }
+
+	private void setCategoryBar() {
+		// スロット36: 全曲ボタン
+		ItemStack allSongs = new ItemStack(Material.BOOKSHELF);
+		ItemMeta allMeta = allSongs.getItemMeta();
+		allMeta.setDisplayName(gMusicMain.getMessageService().getMessage("MusicGUI.music-category-all"));
+		allSongs.setItemMeta(allMeta);
+		inventory.setItem(36, allSongs);
+
+		// スロット37-44: カテゴリボタン（最大8個、異なる色の染料）
+		List<String> categories = gMusicMain.getSongService().getCategories();
+		Material[] dyes = {
+			Material.WHITE_DYE, Material.ORANGE_DYE, Material.MAGENTA_DYE, Material.LIGHT_BLUE_DYE,
+			Material.YELLOW_DYE, Material.LIME_DYE, Material.PINK_DYE, Material.GRAY_DYE
+		};
+
+		for(int i = 0; i < Math.min(categories.size(), 8); i++) {
+			String category = categories.get(i);
+			ItemStack catItem = new ItemStack(dyes[i % dyes.length]);
+			ItemMeta catMeta = catItem.getItemMeta();
+			catMeta.setDisplayName(gMusicMain.getMessageService().getMessage("MusicGUI.music-category", "%Category%", category));
+			catItem.setItemMeta(catMeta);
+			inventory.setItem(37 + i, catItem);
+		}
+	}
 
 	public UUID getOwner() { return uuid; }
 
