@@ -148,22 +148,9 @@ public class GMusicGUI {
 							if(target == null) return;
 							gMusicMain.getPlayService().playSong(target, gMusicMain.getPlayService().getNextSong(target));
 						} else {
-							// スピーカーモードの切り替えと範囲調整
+							// スピーカーモードの切り替え
 							if(!gMusicMain.getConfigService().G_DISABLE_SPEAKER_MODE) {
-								if(click == ClickType.SHIFT_LEFT || click == ClickType.SHIFT_RIGHT) {
-									// Shiftクリック: 範囲調整（±5ブロック）
-									long range = playSettings.getSpeakerRange();
-									long step = 5;
-									long newRange = click == ClickType.SHIFT_RIGHT ? Math.max(range - step, 5) : Math.min(range + step, gMusicMain.getConfigService().MAX_SPEAKER_RANGE);
-									playSettings.setSpeakerRange(newRange);
-								} else if(click == ClickType.MIDDLE) {
-									// ミドルクリック: デフォルトにリセット
-									playSettings.setSpeakerMode(gMusicMain.getConfigService().PS_D_SPEAKER_MODE);
-									playSettings.setSpeakerRange(gMusicMain.getConfigService().SPEAKER_DEFAULT_RANGE);
-								} else {
-									// 左/右クリック: ON/OFF切り替え
-									playSettings.setSpeakerMode(!playSettings.isSpeakerMode());
-								}
+								playSettings.setSpeakerMode(!playSettings.isSpeakerMode());
 								setOptionsBar(); // オプションバーを再描画
 								return; // 237行目のitemStack.setItemMeta()を実行しない
 							}
@@ -217,10 +204,15 @@ public class GMusicGUI {
 								GPlayState songState = gMusicMain.getPlayService().getPlayState(uuid);
 								if(songState != null && songState.getSong() != null) {
 									GSong currentSong = songState.getSong();
+									Player target = Bukkit.getPlayer(uuid);
 									if(playSettings.getFavorites().contains(currentSong)) {
 										playSettings.getFavorites().remove(currentSong);
 									} else {
 										playSettings.getFavorites().add(currentSong);
+										// お気に入り追加時に経験値の効果音を再生
+										if(target != null) {
+											target.playSound(target.getLocation(), org.bukkit.Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
+										}
 									}
 									// データベースに保存
 									gMusicMain.getPlaySettingsService().savePlaySettings(uuid, playSettings);
@@ -248,8 +240,17 @@ public class GMusicGUI {
 						Player target = Bukkit.getPlayer(uuid);
 						if(target == null || song == null) return;
 						if(click == ClickType.MIDDLE) {
-							if(playSettings.getFavorites().contains(song)) playSettings.getFavorites().remove(song);
-							else playSettings.getFavorites().add(song);
+							boolean wasAdded = false;
+							if(playSettings.getFavorites().contains(song)) {
+								playSettings.getFavorites().remove(song);
+							} else {
+								playSettings.getFavorites().add(song);
+								wasAdded = true;
+							}
+							// お気に入り追加時に経験値の効果音を再生
+							if(wasAdded) {
+								target.playSound(target.getLocation(), org.bukkit.Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
+							}
 							// データベースに保存
 							gMusicMain.getPlaySettingsService().savePlaySettings(uuid, playSettings);
 							setPage(page);
@@ -414,6 +415,10 @@ public class GMusicGUI {
 		itemStack = new ItemStack(Material.MAGMA_CREAM);
 		itemMeta = itemStack.getItemMeta();
 		itemMeta.setDisplayName(gMusicMain.getMessageService().getMessage("MusicGUI.music-options-volume", "%Volume%", "" + playSettings.getVolume()));
+		List<String> volumeLore = new ArrayList<>();
+		volumeLore.add(gMusicMain.getMessageService().toFormattedMessage("&7左クリック: +5"));
+		volumeLore.add(gMusicMain.getMessageService().toFormattedMessage("&7右クリック: -5"));
+		itemMeta.setLore(volumeLore);
 		itemStack.setItemMeta(itemMeta);
 		inventory.setItem(46, itemStack);
 		
@@ -423,12 +428,6 @@ public class GMusicGUI {
 			itemMeta.setDisplayName(gMusicMain.getMessageService().getMessage("MusicGUI.music-options-speaker-mode",
 				"%SpeakerMode%", gMusicMain.getMessageService().getMessage(playSettings.isSpeakerMode() ? "MusicGUI.music-options-true" : "MusicGUI.music-options-false"),
 				"%Range%", "" + playSettings.getSpeakerRange()));
-			List<String> lore = new ArrayList<>();
-			lore.add(gMusicMain.getMessageService().toFormattedMessage("&7範囲: &b" + playSettings.getSpeakerRange() + "&7 ブロック"));
-			lore.add(gMusicMain.getMessageService().toFormattedMessage("&7左/右クリック: ON/OFF"));
-			lore.add(gMusicMain.getMessageService().toFormattedMessage("&7Shift+左/右: 範囲±5"));
-			lore.add(gMusicMain.getMessageService().toFormattedMessage("&7ミドルクリック: リセット"));
-			itemMeta.setLore(lore);
 			itemMeta.addItemFlags(ItemFlag.values());
 			itemStack.setItemMeta(itemMeta);
 			inventory.setItem(47, itemStack);

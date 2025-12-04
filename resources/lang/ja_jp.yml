@@ -85,7 +85,7 @@ MusicGUI:
   music-playlist-mode-radio: "&aモード:&6 ラジオ"
   
   music-options: "&c設定"
-  music-options-volume: "&a音量:&b %Volume%%&7 (左クリック:+5 右クリック:-5)"
+  music-options-volume: "&a音量:&b %Volume%%"
   music-options-join: "&aログイン時再生:&6 %Join%"
   music-options-play-mode-once: "&a再生設定:&6 一度のみ"
   music-options-play-mode-shuffle: "&a再生設定:&6 シャッフル"
