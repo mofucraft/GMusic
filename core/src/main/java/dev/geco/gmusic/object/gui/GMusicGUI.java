@@ -165,6 +165,7 @@ public class GMusicGUI {
 									playSettings.setSpeakerMode(!playSettings.isSpeakerMode());
 								}
 								setOptionsBar(); // オプションバーを再描画
+								return; // 237行目のitemStack.setItemMeta()を実行しない
 							}
 						}
 					}
@@ -221,6 +222,8 @@ public class GMusicGUI {
 									} else {
 										playSettings.getFavorites().add(currentSong);
 									}
+									// データベースに保存
+									gMusicMain.getPlaySettingsService().savePlaySettings(uuid, playSettings);
 									setDefaultBar();
 								}
 							}
@@ -247,6 +250,8 @@ public class GMusicGUI {
 						if(click == ClickType.MIDDLE) {
 							if(playSettings.getFavorites().contains(song)) playSettings.getFavorites().remove(song);
 							else playSettings.getFavorites().add(song);
+							// データベースに保存
+							gMusicMain.getPlaySettingsService().savePlaySettings(uuid, playSettings);
 							setPage(page);
 							return;
 						}
