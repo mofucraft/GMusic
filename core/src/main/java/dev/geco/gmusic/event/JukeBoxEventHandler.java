@@ -1,5 +1,6 @@
 package dev.geco.gmusic.event;
 
+import dev.geco.gmusic.object.GPlayState;
 import dev.geco.gmusic.object.gui.GMusicGUI;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
@@ -11,6 +12,7 @@ import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockExplodeEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.block.BlockRedstoneEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.ItemStack;
@@ -74,6 +76,32 @@ public class JukeBoxEventHandler implements Listener {
 		gMusicMain.getJukeBoxService().removeJukebox(block);
 		block.setType(Material.AIR);
 		block.getWorld().dropItemNaturally(block.getLocation().add(0.5, 0, 0.5), gMusicMain.getJukeBoxService().createJukeBoxItem());
+	}
+
+	@EventHandler(priority = EventPriority.MONITOR)
+	public void blockRedstoneEvent(BlockRedstoneEvent event) {
+		Block block = event.getBlock();
+		if(block.getType() != Material.JUKEBOX) return;
+
+		UUID uuid = gMusicMain.getJukeBoxService().getJukeBoxId(block);
+		if(uuid == null) return;
+
+		// レッドストーン信号がOFFからONに変わった時のみ反応
+		if(event.getOldCurrent() == 0 && event.getNewCurrent() > 0) {
+			GPlayState playState = gMusicMain.getPlayService().getPlayState(uuid);
+			if(playState == null) {
+				// 再生中でなければランダム再生開始
+				gMusicMain.getJukeBoxService().playBoxSong(uuid, gMusicMain.getPlayService().getRandomSong(uuid));
+			} else if(playState.isPaused()) {
+				// 一時停止中なら再開
+				gMusicMain.getJukeBoxService().resumeBoxSong(uuid);
+			} else {
+				// 再生中なら一時停止
+				gMusicMain.getJukeBoxService().pauseBoxSong(uuid);
+			}
+			GMusicGUI gui = GMusicGUI.getMusicGUI(uuid);
+			if(gui != null) gui.setPauseResumeBar();
+		}
 	}
 
 }

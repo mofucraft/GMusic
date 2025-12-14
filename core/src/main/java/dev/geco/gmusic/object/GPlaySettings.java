@@ -16,6 +16,11 @@ public class GPlaySettings {
 	private long range;
 	private String currentSong;
 	private List<GSong> favorites;
+	private boolean speakerMode;
+	private long speakerRange;
+	private long uniformRadius;
+	private boolean muteSpeakers;
+	private String currentCategory;
 
 	public GPlaySettings(
 			UUID uuid,
@@ -28,7 +33,11 @@ public class GPlaySettings {
 			boolean toggleMode,
 			long range,
 			String currentSong,
-			List<GSong> favorites
+			List<GSong> favorites,
+			boolean speakerMode,
+			long speakerRange,
+			boolean muteSpeakers,
+			String currentCategory
 	) {
 		this.uuid = uuid;
 		this.playlistMode = playlistMode;
@@ -41,6 +50,11 @@ public class GPlaySettings {
 		this.range = range;
 		this.currentSong = currentSong;
 		this.favorites = favorites;
+		this.speakerMode = speakerMode;
+		this.speakerRange = speakerRange;
+		this.uniformRadius = 0;
+		this.muteSpeakers = muteSpeakers;
+		this.currentCategory = currentCategory;
 	}
 
 	public UUID getUUID() { return uuid; }
@@ -90,5 +104,25 @@ public class GPlaySettings {
 	public void addFavoriteSong(GSong song) { favorites.add(song); }
 
 	public void removeFavoriteSong(GSong song) { favorites.remove(song); }
+
+	public boolean isSpeakerMode() { return speakerMode; }
+
+	public void setSpeakerMode(boolean speakerMode) { this.speakerMode = speakerMode; }
+
+	public long getSpeakerRange() { return speakerRange; }
+
+	public void setSpeakerRange(long speakerRange) { this.speakerRange = speakerRange; }
+
+	public long getUniformRadius() { return uniformRadius; }
+
+	public void setUniformRadius(long uniformRadius) { this.uniformRadius = uniformRadius; }
+
+	public boolean isMuteSpeakers() { return muteSpeakers; }
+
+	public void setMuteSpeakers(boolean muteSpeakers) { this.muteSpeakers = muteSpeakers; }
+
+	public String getCurrentCategory() { return currentCategory; }
+
+	public void setCurrentCategory(String currentCategory) { this.currentCategory = currentCategory; }
 
 }

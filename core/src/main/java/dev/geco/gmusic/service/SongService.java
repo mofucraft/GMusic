@@ -13,9 +13,11 @@ import java.util.logging.Level;
 
 public class SongService {
 
+    private static final String UNCATEGORIZED = "uncategorized";
     private final GMusicMain gMusicMain;
     private static final List<Material> DISCS = Arrays.stream(Material.values()).filter(disc -> disc.name().contains("_DISC_")).toList();
     private final TreeMap<String, GSong> songs = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+    private final List<String> categories = new ArrayList<>();
 
     public SongService(GMusicMain gMusicMain) {
         this.gMusicMain = gMusicMain;
@@ -27,6 +29,14 @@ public class SongService {
 
     public List<GSong> filterSongsBySearch(List<GSong> songs, String search) { return songs.stream().filter(song -> song.getTitle().toLowerCase().contains(search.toLowerCase())).toList(); }
 
+    public List<String> getCategories() { return new ArrayList<>(categories); }
+
+    public List<GSong> getSongsByCategory(String category) {
+        return songs.values().stream()
+                .filter(song -> category.equals(song.getCategory()))
+                .toList();
+    }
+
     public void loadSongs() {
         unloadSongs();
 
@@ -35,17 +45,37 @@ public class SongService {
         File songsDir = new File(gMusicMain.getDataFolder(), "songs");
         if(!songsDir.exists()) return;
 
-        File[] songFiles = songsDir.listFiles();
-        if(songFiles == null) return;
-        for(File file : songFiles) {
+        loadSongsFromDirectory(songsDir, null);
+    }
+
+    private void loadSongsFromDirectory(File directory, String category) {
+        File[] files = directory.listFiles();
+        if(files == null) return;
+
+        for(File file : files) {
+            if(file.isDirectory()) {
+                String subCategory = file.getName();
+                if(!categories.contains(subCategory)) {
+                    categories.add(subCategory);
+                }
+                loadSongsFromDirectory(file, subCategory);
+                continue;
+            }
+
             int extensionPos = file.getName().lastIndexOf(".");
-            if(extensionPos <= 0 || !file.getName().substring(extensionPos + 1).equalsIgnoreCase("gnbs")) return;
+            if(extensionPos <= 0 || !file.getName().substring(extensionPos + 1).equalsIgnoreCase("gnbs")) continue;
 
             try {
                 GSong song = new GSong(file);
                 if(song.getNoteAmount() == 0) {
                     gMusicMain.getLogger().warning("Could not load song '" + file.getName().substring(0, extensionPos) + "', no notes found");
                     continue;
+                }
+
+                String songCategory = category != null ? category : UNCATEGORIZED;
+                song.setCategory(songCategory);
+                if(songCategory.equals(UNCATEGORIZED) && !categories.contains(UNCATEGORIZED)) {
+                    categories.add(0, UNCATEGORIZED);
                 }
 
                 songs.put(song.getId().toLowerCase(), song);
@@ -57,6 +87,7 @@ public class SongService {
 
     public void unloadSongs() {
         songs.clear();
+        categories.clear();
     }
 
     private void convertAllSongs() {

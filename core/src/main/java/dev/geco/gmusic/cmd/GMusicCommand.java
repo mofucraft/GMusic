@@ -2,6 +2,7 @@ package dev.geco.gmusic.cmd;
 
 import dev.geco.gmusic.GMusicMain;
 import dev.geco.gmusic.object.gui.GMusicGUI;
+import dev.geco.gmusic.object.GPlayMode;
 import dev.geco.gmusic.object.GPlaySettings;
 import dev.geco.gmusic.object.GSong;
 import org.bukkit.command.Command;
@@ -37,6 +38,9 @@ public class GMusicCommand implements CommandExecutor {
         }
 
         switch (args[0].toLowerCase()) {
+            case "help" -> {
+                gMusicMain.getMessageService().sendMessage(sender, "Messages.command-gmusic-help");
+            }
             case "play" -> {
                 if(args.length == 1) {
                     gMusicMain.getMessageService().sendMessage(sender, "Messages.command-gmusic-use-error");
@@ -103,6 +107,78 @@ public class GMusicCommand implements CommandExecutor {
             case "toggle" -> {
                 GPlaySettings playSettings = gMusicMain.getPlaySettingsService().getPlaySettings(player.getUniqueId());
                 playSettings.setToggleMode(!playSettings.isToggleMode());
+            }
+            case "loop" -> {
+                GPlaySettings playSettings = gMusicMain.getPlaySettingsService().getPlaySettings(player.getUniqueId());
+                if (playSettings.getPlayMode() == GPlayMode.LOOP) {
+                    playSettings.setPlayMode(GPlayMode.DEFAULT);
+                    gMusicMain.getMessageService().sendMessage(sender, "Messages.command-gmusic-loop-off");
+                } else {
+                    playSettings.setPlayMode(GPlayMode.LOOP);
+                    gMusicMain.getMessageService().sendMessage(sender, "Messages.command-gmusic-loop-on");
+                }
+            }
+            case "reload" -> {
+                if (!gMusicMain.getPermissionService().hasPermission(sender, "Reload")) {
+                    gMusicMain.getMessageService().sendMessage(sender, "Messages.command-permission-error");
+                    return true;
+                }
+                gMusicMain.getSongService().loadSongs();
+                int songCount = gMusicMain.getSongService().getSongs().size();
+                gMusicMain.getMessageService().sendMessage(sender, "Messages.command-gmusic-reload-songs", "%Count%", String.valueOf(songCount));
+            }
+            case "speaker" -> {
+                if (!player.isOp()) {
+                    gMusicMain.getMessageService().sendMessage(sender, "Messages.command-permission-error");
+                    return true;
+                }
+                GPlaySettings playSettings = gMusicMain.getPlaySettingsService().getPlaySettings(player.getUniqueId());
+
+                if (args.length < 2) {
+                    gMusicMain.getMessageService().sendMessage(sender, "Messages.command-gmusic-speaker-usage");
+                    return true;
+                }
+
+                switch (args[1].toLowerCase()) {
+                    case "on" -> {
+                        playSettings.setSpeakerMode(true);
+                        if (args.length >= 3) {
+                            try {
+                                long uniformRadius = Long.parseLong(args[2]);
+                                playSettings.setUniformRadius(uniformRadius);
+                            } catch (NumberFormatException ignored) {}
+                        }
+                        if (args.length >= 4) {
+                            try {
+                                long maxRange = Long.parseLong(args[3]);
+                                playSettings.setSpeakerRange(maxRange);
+                            } catch (NumberFormatException ignored) {}
+                        }
+                        gMusicMain.getMessageService().sendMessage(sender, "Messages.command-gmusic-speaker-on",
+                                "%Uniform%", String.valueOf(playSettings.getUniformRadius()),
+                                "%Max%", String.valueOf(playSettings.getSpeakerRange()));
+                    }
+                    case "off" -> {
+                        playSettings.setSpeakerMode(false);
+                        gMusicMain.getMessageService().sendMessage(sender, "Messages.command-gmusic-speaker-off");
+                    }
+                    case "range" -> {
+                        if (args.length >= 3) {
+                            try {
+                                playSettings.setUniformRadius(Long.parseLong(args[2]));
+                            } catch (NumberFormatException ignored) {}
+                        }
+                        if (args.length >= 4) {
+                            try {
+                                playSettings.setSpeakerRange(Long.parseLong(args[3]));
+                            } catch (NumberFormatException ignored) {}
+                        }
+                        gMusicMain.getMessageService().sendMessage(sender, "Messages.command-gmusic-speaker-range",
+                                "%Uniform%", String.valueOf(playSettings.getUniformRadius()),
+                                "%Max%", String.valueOf(playSettings.getSpeakerRange()));
+                    }
+                    default -> gMusicMain.getMessageService().sendMessage(sender, "Messages.command-gmusic-speaker-usage");
+                }
             }
             default -> gMusicMain.getMessageService().sendMessage(sender, "Messages.command-gmusic-use-error");
         }

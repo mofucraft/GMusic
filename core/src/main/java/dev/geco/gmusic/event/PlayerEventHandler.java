@@ -50,6 +50,9 @@ public class PlayerEventHandler implements Listener {
     public void playerQuitEvent(PlayerQuitEvent event) {
         Player player = event.getPlayer();
 
+        // 再生中の曲を停止（Timer停止、スピーカーモードの音漏れ防止）
+        gMusicMain.getPlayService().stopSong(player);
+
         gMusicMain.getRadioService().removeRadioPlayer(player);
 
         if(gMusicMain.getConfigService().PS_SAVE_ON_QUIT) gMusicMain.getPlaySettingsService().savePlaySettings(player.getUniqueId(), gMusicMain.getPlaySettingsService().getPlaySettings(player.getUniqueId()));

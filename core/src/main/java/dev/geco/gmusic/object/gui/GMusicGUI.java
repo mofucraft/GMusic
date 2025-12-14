@@ -61,12 +61,16 @@ public class GMusicGUI {
 		musicGUIS.put(uuid, this);
 
 		playSettings = gMusicMain.getPlaySettingsService().getPlaySettings(uuid);
+		// ジュークボックスとプレイヤーGUIで異なるタイトルを使用
+		String guiTitle = type == MenuType.JUKEBOX
+			? gMusicMain.getMessageService().getMessage("MusicGUI.jukebox-title")
+			: gMusicMain.getMessageService().getMessage("MusicGUI.title");
 		inventory = Bukkit.createInventory(new InventoryHolder() {
 
 			@Override
 			public @NotNull Inventory getInventory() { return inventory; }
 
-		}, 6 * 9, gMusicMain.getMessageService().getMessage("MusicGUI.title"));
+		}, 6 * 9, guiTitle);
 
 		setPage(1);
 
@@ -95,168 +99,249 @@ public class GMusicGUI {
 				HumanEntity clicker = event.getWhoClicked();
 				int slot = event.getRawSlot();
 				switch(slot) {
-					case 36, 37, 38, 39, 40, 41, 42, 43, 44 -> {
+					// カテゴリエリア: slots 27-39 (2行、カテゴリ用)
+					case 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39 -> {
 						// カテゴリ切り替え処理
-						if(!optionState) {
-							if(slot == 36) {
-								// 全曲ボタン
-								currentCategory = null;
-								playSettings.setCurrentCategory(null);
+						if(slot == 27) {
+							// 全曲ボタン
+							currentCategory = null;
+							playSettings.setCurrentCategory(null);
+							setPage(1);
+							setDefaultBar();
+						} else {
+							// カテゴリボタン (slot 28-39 = 12カテゴリ)
+							List<String> categories = gMusicMain.getSongService().getCategories();
+							int categoryIndex;
+							if(slot <= 35) {
+								categoryIndex = slot - 28; // 28-35 → 0-7
+							} else {
+								categoryIndex = 8 + (slot - 36); // 36-39 → 8-11
+							}
+							if(categoryIndex >= 0 && categoryIndex < categories.size()) {
+								currentCategory = categories.get(categoryIndex);
+								playSettings.setCurrentCategory(currentCategory);
 								setPage(1);
 								setDefaultBar();
-							} else {
-								// カテゴリボタン
-								List<String> categories = gMusicMain.getSongService().getCategories();
-								int categoryIndex = slot - 37;
-								if(categoryIndex < categories.size()) {
-									currentCategory = categories.get(categoryIndex);
-									playSettings.setCurrentCategory(currentCategory);
-									setPage(1);
-									setDefaultBar();
-								}
 							}
 						}
 					}
+					// 設定エリア: slots 40-42 (カテゴリバー2列目右側)
+					case 40 -> {
+						// 音量設定
+						int volumn = playSettings.getVolume();
+						int step = click == ClickType.SHIFT_LEFT || click == ClickType.SHIFT_RIGHT ? SHIFT_VOLUME_STEPS : VOLUME_STEPS;
+						boolean isDecrease = click == ClickType.RIGHT || click == ClickType.SHIFT_RIGHT;
+						int newVolumn = click == ClickType.MIDDLE ? gMusicMain.getConfigService().PS_D_VOLUME : (isDecrease ? Math.max(volumn - step, 0) : Math.min(volumn + step, 100));
+						playSettings.setVolume(newVolumn);
+						setDefaultBar();
+					}
+					case 41 -> {
+						// 可聴範囲設定（ジュークボックスのみ）/ 再生モード（プレイヤーGUI）
+						if(type == MenuType.JUKEBOX) {
+							long range = playSettings.getRange();
+							long step = click == ClickType.SHIFT_LEFT || click == ClickType.SHIFT_RIGHT ? SHIFT_RANGE_STEPS : RANGE_STEPS;
+							long maxRange = gMusicMain.getConfigService().MAX_JUKEBOX_RANGE;
+							boolean isDecrease = click == ClickType.RIGHT || click == ClickType.SHIFT_RIGHT;
+							long newRange = click == ClickType.MIDDLE ? gMusicMain.getConfigService().JUKEBOX_RANGE : (isDecrease ? Math.max(range - step, 1) : Math.min(range + step, maxRange));
+							playSettings.setRange(newRange);
+							setDefaultBar();
+						} else {
+							// プレイヤーGUIでは再生モード設定
+							if(playSettings.getPlayListMode() == GPlayListMode.RADIO) return;
+							int playModeId = playSettings.getPlayMode().getId();
+							GPlayMode playMode = GPlayMode.byId(click == ClickType.MIDDLE ? gMusicMain.getConfigService().PS_D_PLAY_MODE : (click == ClickType.RIGHT ? (playModeId - 1 < 0 ? GPlayMode.values().length - 1 : playModeId - 1) : (playModeId + 1 > GPlayMode.values().length - 1 ? 0 : playModeId + 1)));
+							playSettings.setPlayMode(playMode);
+							setDefaultBar();
+						}
+					}
+					case 42 -> {
+						// 再生モード設定（ジュークボックスのみ）
+						if(type == MenuType.JUKEBOX) {
+							if(playSettings.getPlayListMode() == GPlayListMode.RADIO) return;
+							int playModeId = playSettings.getPlayMode().getId();
+							GPlayMode playMode = GPlayMode.byId(click == ClickType.MIDDLE ? gMusicMain.getConfigService().PS_D_PLAY_MODE : (click == ClickType.RIGHT ? (playModeId - 1 < 0 ? GPlayMode.values().length - 1 : playModeId - 1) : (playModeId + 1 > GPlayMode.values().length - 1 ? 0 : playModeId + 1)));
+							playSettings.setPlayMode(playMode);
+							setDefaultBar();
+						}
+					}
+					// ページナビゲーション: slots 43-44
+					case 43 -> {
+						setPage(page - 1);
+					}
+					case 44 -> {
+						setPage(page + 1);
+					}
+					// コントロールバー: slots 45-51
 					case 45 -> {
-						if(!optionState) {
-							GPlayState songSettings = gMusicMain.getPlayService().getPlayState(uuid);
+						// 一時停止/再開
+						GPlayState songSettings = gMusicMain.getPlayService().getPlayState(uuid);
+						if(songSettings == null) return;
+						if(type == MenuType.JUKEBOX) {
+							if(songSettings.isPaused()) gMusicMain.getJukeBoxService().resumeBoxSong(uuid);
+							else gMusicMain.getJukeBoxService().pauseBoxSong(uuid);
+						} else {
 							Player target = Bukkit.getPlayer(uuid);
-							if(songSettings == null || target == null) return;
+							if(target == null) return;
 							if(songSettings.isPaused()) gMusicMain.getPlayService().resumeSong(target);
 							else gMusicMain.getPlayService().pauseSong(target);
-						} else {
-							setDefaultBar();
-							setPage(page);  // オプションから戻る際に曲リストを再表示
 						}
 					}
 					case 46 -> {
-						if(!optionState) {
+						// 停止
+						if(type == MenuType.JUKEBOX) {
+							gMusicMain.getJukeBoxService().stopBoxSong(uuid);
+						} else {
 							Player target = Bukkit.getPlayer(uuid);
 							if(target == null) return;
 							gMusicMain.getPlayService().stopSong(target);
-						} else {
-							int volumn = playSettings.getVolume();
-							int step = click == ClickType.SHIFT_LEFT || click == ClickType.SHIFT_RIGHT ? SHIFT_VOLUME_STEPS : VOLUME_STEPS;
-							int newVolumn = click == ClickType.MIDDLE ? gMusicMain.getConfigService().PS_D_VOLUME : (click == ClickType.RIGHT ? Math.max(volumn - step, 0) : Math.min(volumn + step, 100));
-							playSettings.setVolume(newVolumn);
-							itemMeta.setDisplayName(gMusicMain.getMessageService().getMessage("MusicGUI.music-options-volume", "%Volume%", "" + newVolumn));
 						}
 					}
 					case 47 -> {
-						if(!optionState) {
+						// スキップ
+						if(type == MenuType.JUKEBOX) {
+							gMusicMain.getJukeBoxService().playBoxSong(uuid, gMusicMain.getJukeBoxService().getNextSong(uuid));
+						} else {
 							Player target = Bukkit.getPlayer(uuid);
 							if(target == null) return;
 							gMusicMain.getPlayService().playSong(target, gMusicMain.getPlayService().getNextSong(target));
-						} else {
-							// スピーカーモードの切り替え
-							if(!gMusicMain.getConfigService().G_DISABLE_SPEAKER_MODE) {
-								playSettings.setSpeakerMode(!playSettings.isSpeakerMode());
-								setOptionsBar(); // オプションバーを再描画
-								return; // 237行目のitemStack.setItemMeta()を実行しない
-							}
 						}
 					}
 					case 48 -> {
+						// ランダム再生
 						if(playSettings.getPlayListMode() == GPlayListMode.RADIO) return;
-						if(!optionState) {
-							if(gMusicMain.getConfigService().G_DISABLE_RANDOM_SONG) return;
+						if(gMusicMain.getConfigService().G_DISABLE_RANDOM_SONG) return;
+						if(type == MenuType.JUKEBOX) {
+							gMusicMain.getJukeBoxService().playBoxSong(uuid, gMusicMain.getPlayService().getRandomSong(uuid));
+						} else {
 							Player target = Bukkit.getPlayer(uuid);
 							if(target == null) return;
 							gMusicMain.getPlayService().playSong(target, gMusicMain.getPlayService().getRandomSong(uuid));
-						} else {
-							playSettings.setMuteSpeakers(click == ClickType.MIDDLE ? gMusicMain.getConfigService().PS_D_MUTE_SPEAKERS : !playSettings.isMuteSpeakers());
-							itemMeta.setDisplayName(gMusicMain.getMessageService().getMessage("MusicGUI.music-options-mute-speakers", "%MuteSpeakers%", gMusicMain.getMessageService().getMessage(playSettings.isMuteSpeakers() ? "MusicGUI.music-options-true" : "MusicGUI.music-options-false")));
 						}
 					}
 					case 49 -> {
-						if(!optionState) {
-							int playListModeId = playSettings.getPlayListMode().getId();
-							GPlayListMode playListMode = GPlayListMode.byId(click == ClickType.MIDDLE ? gMusicMain.getConfigService().PS_D_PLAYLIST_MODE : (click == ClickType.RIGHT ? (playListModeId - 1 < 0 ? GPlayListMode.values().length - 1 : playListModeId - 1) : (playListModeId + 1 > GPlayListMode.values().length - 1 ? 0 : playListModeId + 1)));
-							Player target = Bukkit.getPlayer(uuid);
-							playSettings.setPlayListMode(playListMode);
-							if(playListMode.getId() != playListModeId && target != null) {
-								setPage(1);
-								gMusicMain.getPlayService().stopSong(target);
+						// プレイリストモード切り替え
+						int playListModeId = playSettings.getPlayListMode().getId();
+						GPlayListMode playListMode = GPlayListMode.byId(click == ClickType.MIDDLE ? gMusicMain.getConfigService().PS_D_PLAYLIST_MODE : (click == ClickType.RIGHT ? (playListModeId - 1 < 0 ? GPlayListMode.values().length - 1 : playListModeId - 1) : (playListModeId + 1 > GPlayListMode.values().length - 1 ? 0 : playListModeId + 1)));
+						playSettings.setPlayListMode(playListMode);
+						// モードが変わった場合は曲リストを更新
+						if(playListMode.getId() != playListModeId) {
+							setPage(1);
+							// プレイヤーGUIの場合のみ曲を停止
+							if(type != MenuType.JUKEBOX) {
+								Player target = Bukkit.getPlayer(uuid);
+								if(target != null) gMusicMain.getPlayService().stopSong(target);
 							}
+						}
+						// ラジオモードの処理（プレイヤーGUIのみ）
+						if(type != MenuType.JUKEBOX) {
+							Player target = Bukkit.getPlayer(uuid);
 							if(playListMode == GPlayListMode.RADIO) {
 								gMusicMain.getRadioService().addRadioPlayer(target);
 							} else {
 								gMusicMain.getRadioService().removeRadioPlayer(target);
 							}
-							setDefaultBar();
-						} else {
-							if(playSettings.getPlayListMode() == GPlayListMode.RADIO) return;
-							int playModeId = playSettings.getPlayMode().getId();
-							GPlayMode playMode = GPlayMode.byId(click == ClickType.MIDDLE ? gMusicMain.getConfigService().PS_D_PLAY_MODE : (click == ClickType.RIGHT ? (playModeId - 1 < 0 ? GPlayMode.values().length - 1 : playModeId - 1) : (playModeId + 1 > GPlayMode.values().length - 1 ? 0 : playModeId + 1)));
-							playSettings.setPlayMode(playMode);
-							itemMeta.setDisplayName(gMusicMain.getMessageService().getMessage(playMode == GPlayMode.DEFAULT ? "MusicGUI.music-options-play-mode-once" : playMode == GPlayMode.SHUFFLE ? "MusicGUI.music-options-play-mode-shuffle" : playMode == GPlayMode.LOOP ? "MusicGUI.music-options-play-mode-repeat" : "MusicGUI.music-options-play-mode-category"));
 						}
+						setDefaultBar();
 					}
 					case 50 -> {
-						if(!optionState) {
-							setOptionsBar();
-						}
+						// 検索ボタン（オプションボタンは削除）
+						// 現在は未使用
 					}
 					case 51 -> {
-						if(!optionState) {
-							// お気に入り追加/削除
-							if(!gMusicMain.getConfigService().G_DISABLE_FAVORITES && playSettings.getPlayListMode() != GPlayListMode.RADIO) {
-								GPlayState songState = gMusicMain.getPlayService().getPlayState(uuid);
-								if(songState != null && songState.getSong() != null) {
-									GSong currentSong = songState.getSong();
-									Player target = Bukkit.getPlayer(uuid);
-									if(playSettings.getFavorites().contains(currentSong)) {
-										playSettings.getFavorites().remove(currentSong);
-									} else {
-										playSettings.getFavorites().add(currentSong);
-										// お気に入り追加時に経験値の効果音を再生
-										if(target != null) {
-											target.playSound(target.getLocation(), org.bukkit.Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
-										}
-									}
-									// データベースに保存
-									gMusicMain.getPlaySettingsService().savePlaySettings(uuid, playSettings);
-									setDefaultBar();
+						// お気に入り追加/削除
+						if(!gMusicMain.getConfigService().G_DISABLE_FAVORITES && playSettings.getPlayListMode() != GPlayListMode.RADIO) {
+							GPlayState songState = gMusicMain.getPlayService().getPlayState(uuid);
+							if(songState != null && songState.getSong() != null) {
+								GSong currentSong = songState.getSong();
+								boolean wasAdded = false;
+								if(playSettings.getFavorites().contains(currentSong)) {
+									playSettings.getFavorites().remove(currentSong);
+								} else {
+									playSettings.getFavorites().add(currentSong);
+									wasAdded = true;
 								}
+								// お気に入り追加時に経験値の効果音を再生（通常プレイヤーGUIの場合のみ）
+								if(wasAdded && type != MenuType.JUKEBOX) {
+									Player target = Bukkit.getPlayer(uuid);
+									if(target != null) {
+										target.playSound(target.getLocation(), org.bukkit.Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
+									}
+								}
+								// データベースに保存
+								gMusicMain.getPlaySettingsService().savePlaySettings(uuid, playSettings);
+								// 曲リストを更新（お気に入りハートの表示更新のため）
+								setPage(page);
+								setDefaultBar();
 							}
-						} else {
-							if(type != MenuType.JUKEBOX) return;
-							long range = playSettings.getRange();
-							long step = click == ClickType.SHIFT_LEFT || click == ClickType.SHIFT_RIGHT ? SHIFT_RANGE_STEPS : RANGE_STEPS;
-							long newRange = click == ClickType.MIDDLE ? gMusicMain.getConfigService().JUKEBOX_RANGE : (click == ClickType.RIGHT ? Math.max(range - step, 0) : Math.min(range + step, gMusicMain.getConfigService().MAX_JUKEBOX_RANGE));
-							playSettings.setRange(newRange);
-							itemMeta.setDisplayName(gMusicMain.getMessageService().getMessage("MusicGUI.music-options-range", "%Range%", "" + newRange));
 						}
 					}
+					// スピーカーモード/ミュート: slots 52-53 (右下)
 					case 52 -> {
-						setPage(page - 1);
+						// スピーカーモード切り替え / 範囲調整
+						if(!gMusicMain.getConfigService().G_DISABLE_SPEAKER_MODE) {
+							if(click == ClickType.SHIFT_LEFT || click == ClickType.SHIFT_RIGHT) {
+								// Shift+クリック: 範囲調整
+								long range = playSettings.getSpeakerRange();
+								long maxRange = gMusicMain.getConfigService().MAX_SPEAKER_RANGE;
+								boolean isDecrease = click == ClickType.SHIFT_RIGHT;
+								long newRange = isDecrease ? Math.max(range - SHIFT_RANGE_STEPS, 1) : Math.min(range + SHIFT_RANGE_STEPS, maxRange);
+								playSettings.setSpeakerRange(newRange);
+							} else {
+								// 通常クリック: ON/OFF切り替え
+								playSettings.setSpeakerMode(!playSettings.isSpeakerMode());
+							}
+							setDefaultBar();
+						}
 					}
 					case 53 -> {
-						setPage(page + 1);
+						// 他人のスピーカーミュート切り替え
+						playSettings.setMuteSpeakers(!playSettings.isMuteSpeakers());
+						setDefaultBar();
 					}
+					// 曲リストエリア: slots 0-26
 					default -> {
-						if(slot < 0 || slot > 35) return;
+						if(slot < 0 || slot > 26) return;
 						GSong song = pageSongs.get(slot);
-						Player target = Bukkit.getPlayer(uuid);
-						if(target == null || song == null) return;
-						if(click == ClickType.MIDDLE) {
-							boolean wasAdded = false;
-							if(playSettings.getFavorites().contains(song)) {
-								playSettings.getFavorites().remove(song);
-							} else {
-								playSettings.getFavorites().add(song);
-								wasAdded = true;
+						if(song == null) return;
+
+						if(type == MenuType.JUKEBOX) {
+							// ジュークボックスの場合
+							if(click == ClickType.MIDDLE) {
+								// お気に入りトグル
+								if(playSettings.getFavorites().contains(song)) {
+									playSettings.getFavorites().remove(song);
+								} else {
+									playSettings.getFavorites().add(song);
+								}
+								gMusicMain.getPlaySettingsService().savePlaySettings(uuid, playSettings);
+								setPage(page);
+								return;
 							}
-							// お気に入り追加時に経験値の効果音を再生
-							if(wasAdded) {
-								target.playSound(target.getLocation(), org.bukkit.Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
+							// ジュークボックスで曲を再生
+							gMusicMain.getJukeBoxService().playBoxSong(uuid, song);
+						} else {
+							// 通常のプレイヤーGUI
+							Player target = Bukkit.getPlayer(uuid);
+							if(target == null) return;
+							if(click == ClickType.MIDDLE) {
+								boolean wasAdded = false;
+								if(playSettings.getFavorites().contains(song)) {
+									playSettings.getFavorites().remove(song);
+								} else {
+									playSettings.getFavorites().add(song);
+									wasAdded = true;
+								}
+								// お気に入り追加時に経験値の効果音を再生
+								if(wasAdded) {
+									target.playSound(target.getLocation(), org.bukkit.Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
+								}
+								// データベースに保存
+								gMusicMain.getPlaySettingsService().savePlaySettings(uuid, playSettings);
+								setPage(page);
+								return;
 							}
-							// データベースに保存
-							gMusicMain.getPlaySettingsService().savePlaySettings(uuid, playSettings);
-							setPage(page);
-							return;
+							gMusicMain.getPlayService().playSong(target, song);
 						}
-						gMusicMain.getPlayService().playSong(target, song);
 					}
 				}
 				setPauseResumeBar();
@@ -303,7 +388,10 @@ public class GMusicGUI {
 		return null;
 	}
 
-	private void clearBar() { for(int slot = 45; slot < 52; slot++) inventory.setItem(slot, null); }
+	private void clearBar() {
+		// コントロールバー（45-51）をクリア、スピーカー/ミュート（52-53）は維持
+		for(int slot = 45; slot <= 51; slot++) inventory.setItem(slot, null);
+	}
 
 	public void setDefaultBar() {
 		optionState = false;
@@ -313,6 +401,65 @@ public class GMusicGUI {
 		ItemStack itemStack;
 		ItemMeta itemMeta;
 
+		// 音量設定（slot 40）
+		itemStack = new ItemStack(Material.MAGMA_CREAM);
+		itemMeta = itemStack.getItemMeta();
+		itemMeta.setDisplayName(gMusicMain.getMessageService().getMessage("MusicGUI.music-options-volume", "%Volume%", "" + playSettings.getVolume()));
+		List<String> volumeLore = new ArrayList<>();
+		volumeLore.add(gMusicMain.getMessageService().toFormattedMessage("&7左クリック: +10"));
+		volumeLore.add(gMusicMain.getMessageService().toFormattedMessage("&7右クリック: -10"));
+		volumeLore.add(gMusicMain.getMessageService().toFormattedMessage("&7Shift+クリック: ±1"));
+		itemMeta.setLore(volumeLore);
+		itemStack.setItemMeta(itemMeta);
+		inventory.setItem(40, itemStack);
+
+		// 可聴範囲設定（slot 41）- ジュークボックスのみ / 再生モード - プレイヤーGUI
+		if(type == MenuType.JUKEBOX) {
+			itemStack = new ItemStack(Material.REDSTONE);
+			itemMeta = itemStack.getItemMeta();
+			itemMeta.setDisplayName(gMusicMain.getMessageService().getMessage("MusicGUI.music-options-range", "%Range%", "" + playSettings.getRange()));
+			List<String> rangeLore = new ArrayList<>();
+			rangeLore.add(gMusicMain.getMessageService().toFormattedMessage("&7左クリック: +1"));
+			rangeLore.add(gMusicMain.getMessageService().toFormattedMessage("&7右クリック: -1"));
+			rangeLore.add(gMusicMain.getMessageService().toFormattedMessage("&7Shift+クリック: ±10"));
+			itemMeta.setLore(rangeLore);
+			itemStack.setItemMeta(itemMeta);
+			inventory.setItem(41, itemStack);
+
+			// 再生モード設定（slot 42）- ジュークボックス
+			if(playSettings.getPlayListMode() != GPlayListMode.RADIO) {
+				itemStack = new ItemStack(Material.BLAZE_POWDER);
+				itemMeta = itemStack.getItemMeta();
+				String playModeKey = switch(playSettings.getPlayMode()) {
+					case DEFAULT -> "MusicGUI.music-options-play-mode-once";
+					case SHUFFLE -> "MusicGUI.music-options-play-mode-shuffle";
+					case LOOP -> "MusicGUI.music-options-play-mode-repeat";
+					case CONTINUE -> "MusicGUI.music-options-play-mode-continue";
+					case CATEGORY -> "MusicGUI.music-options-play-mode-category";
+				};
+				itemMeta.setDisplayName(gMusicMain.getMessageService().getMessage(playModeKey));
+				itemStack.setItemMeta(itemMeta);
+				inventory.setItem(42, itemStack);
+			}
+		} else {
+			// プレイヤーGUIでは再生モード設定のみ（slot 41）
+			if(playSettings.getPlayListMode() != GPlayListMode.RADIO) {
+				itemStack = new ItemStack(Material.BLAZE_POWDER);
+				itemMeta = itemStack.getItemMeta();
+				String playModeKey = switch(playSettings.getPlayMode()) {
+					case DEFAULT -> "MusicGUI.music-options-play-mode-once";
+					case SHUFFLE -> "MusicGUI.music-options-play-mode-shuffle";
+					case LOOP -> "MusicGUI.music-options-play-mode-repeat";
+					case CONTINUE -> "MusicGUI.music-options-play-mode-continue";
+					case CATEGORY -> "MusicGUI.music-options-play-mode-category";
+				};
+				itemMeta.setDisplayName(gMusicMain.getMessageService().getMessage(playModeKey));
+				itemStack.setItemMeta(itemMeta);
+				inventory.setItem(41, itemStack);
+			}
+		}
+
+		// ランダムボタン（slot 48）
 		if(!gMusicMain.getConfigService().G_DISABLE_RANDOM_SONG && playSettings.getPlayListMode() != GPlayListMode.RADIO) {
 			itemStack = new ItemStack(Material.ENDER_PEARL);
 			itemMeta = itemStack.getItemMeta();
@@ -321,6 +468,7 @@ public class GMusicGUI {
 			inventory.setItem(48, itemStack);
 		}
 
+		// プレイリストモードボタン（slot 49）
 		if(!gMusicMain.getConfigService().G_DISABLE_PLAYLIST) {
 			itemStack = new ItemStack(Material.NOTE_BLOCK);
 			itemMeta = itemStack.getItemMeta();
@@ -329,43 +477,73 @@ public class GMusicGUI {
 			inventory.setItem(49, itemStack);
 		}
 
-		if(!gMusicMain.getConfigService().G_DISABLE_OPTIONS) {
-			itemStack = new ItemStack(Material.HOPPER);
-			itemMeta = itemStack.getItemMeta();
-			itemMeta.setDisplayName(gMusicMain.getMessageService().getMessage("MusicGUI.music-options"));
-			itemStack.setItemMeta(itemMeta);
-			inventory.setItem(50, itemStack);
-		}
+		// slot 50 は空（オプションボタンは削除）
 
-		// カテゴリーボタン（スロット36-44）
-		setCategoryBar();
-
-		// お気に入り追加ボタン（スロット51、disable-favoritesがfalseの場合のみ）
+		// お気に入り追加ボタン（slot 51）
 		if(!gMusicMain.getConfigService().G_DISABLE_FAVORITES && playSettings.getPlayListMode() != GPlayListMode.RADIO) {
 			GPlayState songState = gMusicMain.getPlayService().getPlayState(uuid);
-			if(songState != null && songState.getSong() != null) {
-				GSong currentSong = songState.getSong();
-				itemStack = new ItemStack(Material.NETHER_STAR);
-				itemMeta = itemStack.getItemMeta();
-				itemMeta.setDisplayName(gMusicMain.getMessageService().getMessage("MusicGUI.music-add-favorite"));
-				if(playSettings.getFavorites().contains(currentSong)) {
-					itemMeta.addEnchant(org.bukkit.enchantments.Enchantment.UNBREAKING, 1, true);
-					itemMeta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
-				}
-				itemStack.setItemMeta(itemMeta);
-				inventory.setItem(51, itemStack);
+			GSong currentSong = songState != null ? songState.getSong() : null;
+			itemStack = new ItemStack(Material.NETHER_STAR);
+			itemMeta = itemStack.getItemMeta();
+			boolean isFavorite = currentSong != null && playSettings.getFavorites().contains(currentSong);
+			itemMeta.setDisplayName(gMusicMain.getMessageService().getMessage(isFavorite ? "MusicGUI.music-remove-favorite" : "MusicGUI.music-add-favorite"));
+			if(isFavorite) {
+				itemMeta.addEnchant(org.bukkit.enchantments.Enchantment.UNBREAKING, 1, true);
+				itemMeta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
 			}
+			itemStack.setItemMeta(itemMeta);
+			inventory.setItem(51, itemStack);
 		}
+
+		// スピーカーモードボタン（slot 52、右下）- ジュークボックスGUIでは非表示
+		if(type != MenuType.JUKEBOX && !gMusicMain.getConfigService().G_DISABLE_SPEAKER_MODE) {
+			itemStack = new ItemStack(Material.JUKEBOX);
+			itemMeta = itemStack.getItemMeta();
+			// 範囲説明付きのスピーカーモード表示
+			itemMeta.setDisplayName(gMusicMain.getMessageService().getMessage("MusicGUI.music-options-speaker-mode",
+				"%SpeakerMode%", gMusicMain.getMessageService().getMessage(playSettings.isSpeakerMode() ? "MusicGUI.music-options-true" : "MusicGUI.music-options-false"),
+				"%Range%", "" + playSettings.getSpeakerRange()));
+			List<String> speakerLore = new ArrayList<>();
+			speakerLore.add(gMusicMain.getMessageService().toFormattedMessage("&7クリック: ON/OFF"));
+			speakerLore.add(gMusicMain.getMessageService().toFormattedMessage("&7Shift+左: 範囲+10"));
+			speakerLore.add(gMusicMain.getMessageService().toFormattedMessage("&7Shift+右: 範囲-10"));
+			itemMeta.setLore(speakerLore);
+			if(playSettings.isSpeakerMode()) {
+				itemMeta.addEnchant(org.bukkit.enchantments.Enchantment.UNBREAKING, 1, true);
+				itemMeta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
+			}
+			itemStack.setItemMeta(itemMeta);
+			inventory.setItem(52, itemStack);
+		}
+
+		// ミュートボタン（slot 53、右下）- ジュークボックスGUIでは非表示
+		if(type != MenuType.JUKEBOX) {
+			itemStack = new ItemStack(Material.IRON_BARS);
+			itemMeta = itemStack.getItemMeta();
+			itemMeta.setDisplayName(gMusicMain.getMessageService().getMessage("MusicGUI.music-mute-speakers",
+				"%MuteSpeakers%", gMusicMain.getMessageService().getMessage(playSettings.isMuteSpeakers() ? "MusicGUI.music-options-true" : "MusicGUI.music-options-false")));
+			if(playSettings.isMuteSpeakers()) {
+				itemMeta.addEnchant(org.bukkit.enchantments.Enchantment.UNBREAKING, 1, true);
+				itemMeta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
+			}
+			itemStack.setItemMeta(itemMeta);
+			inventory.setItem(53, itemStack);
+		}
+
+		// カテゴリーボタン（スロット27-42）
+		setCategoryBar();
 
 		setPauseResumeBar();
 	}
 
 	public void setPauseResumeBar() {
-		if(optionState || playSettings.getPlayListMode() == GPlayListMode.RADIO) return;
+		if(playSettings.getPlayListMode() == GPlayListMode.RADIO) return;
 
 		GPlayState songSettings = gMusicMain.getPlayService().getPlayState(uuid);
 
 		if(songSettings != null) {
+			// 再生中: コントロールボタンをslot 45-47に配置
+			// 45: 一時停止/再開
 			ItemStack itemStack = new ItemStack(Material.END_CRYSTAL);
 			ItemMeta itemMeta = itemStack.getItemMeta();
 			if(songSettings.isPaused()) {
@@ -376,12 +554,14 @@ public class GMusicGUI {
 			itemStack.setItemMeta(itemMeta);
 			inventory.setItem(45, itemStack);
 
+			// 46: 停止
 			itemStack = new ItemStack(Material.BARRIER);
 			itemMeta = itemStack.getItemMeta();
 			itemMeta.setDisplayName(gMusicMain.getMessageService().getMessage("MusicGUI.music-stop"));
 			itemStack.setItemMeta(itemMeta);
 			inventory.setItem(46, itemStack);
 
+			// 47: スキップ
 			itemStack = new ItemStack(Material.FEATHER);
 			itemMeta = itemStack.getItemMeta();
 			itemMeta.setDisplayName(gMusicMain.getMessageService().getMessage("MusicGUI.music-skip"));
@@ -391,6 +571,7 @@ public class GMusicGUI {
 			return;
 		}
 
+		// 曲が再生されていない場合はコントロールボタンをクリア
 		inventory.setItem(45, null);
 		inventory.setItem(46, null);
 		inventory.setItem(47, null);
@@ -401,7 +582,7 @@ public class GMusicGUI {
 
 		clearBar();
 
-		// オプション中は曲リストとカテゴリボタンを非表示にする
+		// オプション中は曲リスト、カテゴリ、ページナビゲーションを非表示にする
 		for(int slot = 0; slot < 45; slot++) {
 			inventory.setItem(slot, null);
 		}
@@ -411,48 +592,47 @@ public class GMusicGUI {
 		itemMeta.setDisplayName(gMusicMain.getMessageService().getMessage("MusicGUI.music-back"));
 		itemStack.setItemMeta(itemMeta);
 		inventory.setItem(45, itemStack);
-		
+
+		// 音量設定（slot 46）
 		itemStack = new ItemStack(Material.MAGMA_CREAM);
 		itemMeta = itemStack.getItemMeta();
 		itemMeta.setDisplayName(gMusicMain.getMessageService().getMessage("MusicGUI.music-options-volume", "%Volume%", "" + playSettings.getVolume()));
 		List<String> volumeLore = new ArrayList<>();
-		volumeLore.add(gMusicMain.getMessageService().toFormattedMessage("&7左クリック: +5"));
-		volumeLore.add(gMusicMain.getMessageService().toFormattedMessage("&7右クリック: -5"));
+		volumeLore.add(gMusicMain.getMessageService().toFormattedMessage("&7左クリック: +10"));
+		volumeLore.add(gMusicMain.getMessageService().toFormattedMessage("&7右クリック: -10"));
+		volumeLore.add(gMusicMain.getMessageService().toFormattedMessage("&7Shift+クリック: ±1"));
 		itemMeta.setLore(volumeLore);
 		itemStack.setItemMeta(itemMeta);
 		inventory.setItem(46, itemStack);
-		
-		if(!gMusicMain.getConfigService().G_DISABLE_SPEAKER_MODE) {
-			itemStack = new ItemStack(Material.JUKEBOX);
+
+		// 再生モード設定（slot 47）- スピーカーモード/ミュートは重複なので削除
+		if(playSettings.getPlayListMode() != GPlayListMode.RADIO) {
+			itemStack = new ItemStack(Material.BLAZE_POWDER);
 			itemMeta = itemStack.getItemMeta();
-			itemMeta.setDisplayName(gMusicMain.getMessageService().getMessage("MusicGUI.music-options-speaker-mode",
-				"%SpeakerMode%", gMusicMain.getMessageService().getMessage(playSettings.isSpeakerMode() ? "MusicGUI.music-options-true" : "MusicGUI.music-options-false"),
-				"%Range%", "" + playSettings.getSpeakerRange()));
-			itemMeta.addItemFlags(ItemFlag.values());
+			String playModeKey = switch(playSettings.getPlayMode()) {
+				case DEFAULT -> "MusicGUI.music-options-play-mode-once";
+				case SHUFFLE -> "MusicGUI.music-options-play-mode-shuffle";
+				case LOOP -> "MusicGUI.music-options-play-mode-repeat";
+				case CONTINUE -> "MusicGUI.music-options-play-mode-continue";
+				case CATEGORY -> "MusicGUI.music-options-play-mode-category";
+			};
+			itemMeta.setDisplayName(gMusicMain.getMessageService().getMessage(playModeKey));
 			itemStack.setItemMeta(itemMeta);
 			inventory.setItem(47, itemStack);
 		}
 
-		if(playSettings.getPlayListMode() != GPlayListMode.RADIO) {
-			itemStack = new ItemStack(Material.IRON_BARS);
-			itemMeta = itemStack.getItemMeta();
-			itemMeta.setDisplayName(gMusicMain.getMessageService().getMessage("MusicGUI.music-options-mute-speakers", "%MuteSpeakers%", gMusicMain.getMessageService().getMessage(playSettings.isMuteSpeakers() ? "MusicGUI.music-options-true" : "MusicGUI.music-options-false")));
-			itemStack.setItemMeta(itemMeta);
-			inventory.setItem(48, itemStack);
-			
-			itemStack = new ItemStack(Material.BLAZE_POWDER);
-			itemMeta = itemStack.getItemMeta();
-			itemMeta.setDisplayName(gMusicMain.getMessageService().getMessage(playSettings.getPlayMode() == GPlayMode.DEFAULT ? "MusicGUI.music-options-play-mode-once" : playSettings.getPlayMode() == GPlayMode.SHUFFLE ? "MusicGUI.music-options-play-mode-shuffle" : playSettings.getPlayMode() == GPlayMode.LOOP ? "MusicGUI.music-options-play-mode-repeat" : "MusicGUI.music-options-play-mode-category"));
-			itemStack.setItemMeta(itemMeta);
-			inventory.setItem(49, itemStack);
-		}
-
+		// 可聴範囲設定（slot 48）- ジュークボックスのみ
 		if(type == MenuType.JUKEBOX) {
 			itemStack = new ItemStack(Material.REDSTONE);
 			itemMeta = itemStack.getItemMeta();
 			itemMeta.setDisplayName(gMusicMain.getMessageService().getMessage("MusicGUI.music-options-range", "%Range%", "" + playSettings.getRange()));
+			List<String> rangeLore = new ArrayList<>();
+			rangeLore.add(gMusicMain.getMessageService().toFormattedMessage("&7左クリック: +1"));
+			rangeLore.add(gMusicMain.getMessageService().toFormattedMessage("&7右クリック: -1"));
+			rangeLore.add(gMusicMain.getMessageService().toFormattedMessage("&7Shift+クリック: ±10"));
+			itemMeta.setLore(rangeLore);
 			itemStack.setItemMeta(itemMeta);
-			inventory.setItem(51, itemStack);
+			inventory.setItem(48, itemStack);
 		}
 	}
 
@@ -477,7 +657,7 @@ public class GMusicGUI {
 				// カテゴリが選択されていない場合はプレイリストモードに応じて取得
 				songs = playSettings.getPlayListMode() == GPlayListMode.FAVORITES ? playSettings.getFavorites() : gMusicMain.getSongService().getSongs();
 			}
-			
+
 			// 検索キーワードがある場合は検索でフィルタ
 			if(searchKey != null && !searchKey.isEmpty()) {
 				songs = gMusicMain.getSongService().filterSongsBySearch(songs, searchKey);
@@ -489,12 +669,13 @@ public class GMusicGUI {
 
 		page = newPage;
 
-		for(int slot = 0; slot < 36; slot++) inventory.setItem(slot, null);
+		// 曲リストエリア: slots 0-26 (27スロット、3行)
+		for(int slot = 0; slot < 27; slot++) inventory.setItem(slot, null);
 
 		pageSongs.clear();
 
 		if(!songs.isEmpty()) {
-			for(int songPosition = (page - 1) * 36; songPosition < 36 * page && songPosition < songs.size(); songPosition++) {
+			for(int songPosition = (page - 1) * 27; songPosition < 27 * page && songPosition < songs.size(); songPosition++) {
 				GSong song = songs.get(songPosition);
 				ItemStack itemStack = new ItemStack(song.getDiscMaterial());
 				ItemMeta itemMeta = itemStack.getItemMeta();
@@ -508,25 +689,26 @@ public class GMusicGUI {
 				for(String descriptionRow : song.getDescription()) description.add(gMusicMain.getMessageService().toFormattedMessage("&6" + descriptionRow));
 				if(playSettings.getFavorites().contains(song)) description.add(gMusicMain.getMessageService().getMessage("MusicGUI.disc-favorite"));
 				itemMeta.setLore(description);
-				pageSongs.put(songPosition % 36, song);
+				pageSongs.put(songPosition % 27, song);
 				itemMeta.addItemFlags(ItemFlag.values());
 				itemStack.setItemMeta(itemMeta);
-				inventory.setItem(songPosition % 36, itemStack);
+				inventory.setItem(songPosition % 27, itemStack);
 			}
 		}
 
+		// ページナビゲーション: slots 43-44
 		if(page > 1) {
 			ItemStack itemStack = new ItemStack(Material.ARROW);
 			ItemMeta itemMeta = itemStack.getItemMeta();
 			itemMeta.setDisplayName(gMusicMain.getMessageService().getMessage("MusicGUI.last-page"));
 			itemStack.setItemMeta(itemMeta);
-			inventory.setItem(52, itemStack);
+			inventory.setItem(43, itemStack);
 		} else {
 			ItemStack itemStack = new ItemStack(Material.BLACK_STAINED_GLASS_PANE);
 			ItemMeta itemMeta = itemStack.getItemMeta();
 			itemMeta.setDisplayName(" ");
 			itemStack.setItemMeta(itemMeta);
-			inventory.setItem(52, itemStack);
+			inventory.setItem(43, itemStack);
 		}
 
 		if(!optionState) {
@@ -535,44 +717,59 @@ public class GMusicGUI {
 				ItemMeta itemMeta = itemStack.getItemMeta();
 				itemMeta.setDisplayName(gMusicMain.getMessageService().getMessage("MusicGUI.next-page"));
 				itemStack.setItemMeta(itemMeta);
-				inventory.setItem(53, itemStack);
+				inventory.setItem(44, itemStack);
 			} else {
 				ItemStack itemStack = new ItemStack(Material.BLACK_STAINED_GLASS_PANE);
 				ItemMeta itemMeta = itemStack.getItemMeta();
 				itemMeta.setDisplayName(" ");
 				itemStack.setItemMeta(itemMeta);
-				inventory.setItem(53, itemStack);
+				inventory.setItem(44, itemStack);
 			}
 		} else {
 			// オプション中は次のページボタンを非表示
-			inventory.setItem(53, null);
+			inventory.setItem(44, null);
 		}
 	}
 
-	private int getMaxPageSize(int songCount) { return (songCount / 36) + (songCount % 36 == 0 ? 0 : 1); }
+	private int getMaxPageSize(int songCount) { return (songCount / 27) + (songCount % 27 == 0 ? 0 : 1); }
 
 	private void setCategoryBar() {
-		// スロット36: 全曲ボタン
-		ItemStack allSongs = new ItemStack(Material.BOOKSHELF);
-		ItemMeta allMeta = allSongs.getItemMeta();
-		allMeta.setDisplayName(gMusicMain.getMessageService().getMessage("MusicGUI.music-category-all"));
-		allSongs.setItemMeta(allMeta);
-		inventory.setItem(36, allSongs);
+		// カテゴリバーをクリア（2段: slots 27-35, 36-39）※40-42は設定ボタン用
+		for(int i = 27; i <= 39; i++) {
+			inventory.setItem(i, null);
+		}
 
-		// スロット37-44: カテゴリボタン（最大8個、異なる色の染料）
-		List<String> categories = gMusicMain.getSongService().getCategories();
-		Material[] dyes = {
-			Material.WHITE_DYE, Material.ORANGE_DYE, Material.MAGENTA_DYE, Material.LIGHT_BLUE_DYE,
-			Material.YELLOW_DYE, Material.LIME_DYE, Material.PINK_DYE, Material.GRAY_DYE
-		};
+		// お気に入りモード時はカテゴリを非表示にする
+		if(playSettings.getPlayListMode() != GPlayListMode.FAVORITES) {
+			// スロット27: 全曲ボタン
+			ItemStack allSongs = new ItemStack(Material.BOOKSHELF);
+			ItemMeta allMeta = allSongs.getItemMeta();
+			allMeta.setDisplayName(gMusicMain.getMessageService().getMessage("MusicGUI.music-category-all"));
+			allSongs.setItemMeta(allMeta);
+			inventory.setItem(27, allSongs);
 
-		for(int i = 0; i < Math.min(categories.size(), 8); i++) {
-			String category = categories.get(i);
-			ItemStack catItem = new ItemStack(dyes[i % dyes.length]);
-			ItemMeta catMeta = catItem.getItemMeta();
-			catMeta.setDisplayName(gMusicMain.getMessageService().getMessage("MusicGUI.music-category", "%Category%", category));
-			catItem.setItemMeta(catMeta);
-			inventory.setItem(37 + i, catItem);
+			// スロット28-39: カテゴリボタン（2段で最大12個）
+			List<String> categories = gMusicMain.getSongService().getCategories();
+			Material[] dyes = {
+				Material.WHITE_DYE, Material.ORANGE_DYE, Material.MAGENTA_DYE, Material.LIGHT_BLUE_DYE,
+				Material.YELLOW_DYE, Material.LIME_DYE, Material.PINK_DYE, Material.GRAY_DYE,
+				Material.CYAN_DYE, Material.PURPLE_DYE, Material.BLUE_DYE, Material.BROWN_DYE
+			};
+
+			for(int i = 0; i < Math.min(categories.size(), 12); i++) {
+				String category = categories.get(i);
+				ItemStack catItem = new ItemStack(dyes[i % dyes.length]);
+				ItemMeta catMeta = catItem.getItemMeta();
+				String displayCategory = "uncategorized".equals(category)
+					? gMusicMain.getMessageService().getMessage("MusicGUI.music-category-uncategorized")
+					: category;
+				catMeta.setDisplayName(gMusicMain.getMessageService().getMessage("MusicGUI.music-category", "%Category%", displayCategory));
+				catItem.setItemMeta(catMeta);
+				// 28-35 (8個) + 36-39 (4個) = 12個
+				int slot = 28 + i;
+				if(slot > 35) slot = 36 + (i - 8); // 2段目
+				inventory.setItem(slot, catItem);
+			}
 		}
 	}
 

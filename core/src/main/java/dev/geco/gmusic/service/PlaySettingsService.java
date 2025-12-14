@@ -54,7 +54,8 @@ public class PlaySettingsService {
 		try {
 			try(ResultSet playSettingsFavoritesData = gMusicMain.getDataService().executeAndGet("SELECT * FROM gmusic_play_settings_favorites WHERE uuid = ?", uuid.toString())) {
 				while(playSettingsFavoritesData.next()) {
-					favorites.add(gMusicMain.getSongService().getSongById(playSettingsFavoritesData.getString("songId")));
+					GSong song = gMusicMain.getSongService().getSongById(playSettingsFavoritesData.getString("songId"));
+					if(song != null) favorites.add(song);
 				}
 			}
 

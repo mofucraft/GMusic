@@ -232,8 +232,16 @@ public class PlayService {
 									GPlaySettings listenerSettings = gMusicMain.getPlaySettingsService()
 											.getPlaySettings(listener.getUniqueId());
 
-									float baseVolume = (float) ((distance - playSettings.getSpeakerRange())
-											* playSettings.getFixedVolume() / (double) -playSettings.getSpeakerRange());
+									// 均一音量半径＋二乗減衰
+									long uniformRadius = playSettings.getUniformRadius();
+									long maxRange = playSettings.getSpeakerRange();
+									float baseVolume;
+									if (distance <= uniformRadius) {
+										baseVolume = playSettings.getFixedVolume();
+									} else {
+										float normalizedDistance = (float) (distance - uniformRadius) / (maxRange - uniformRadius);
+										baseVolume = playSettings.getFixedVolume() / (1.0f + normalizedDistance * normalizedDistance);
+									}
 									float listenerVolume = baseVolume * notePart.getVolume()
 											* listenerSettings.getVolume() / 100f;
 
@@ -275,9 +283,12 @@ public class PlayService {
 					if (playSettings.getPlayMode() == GPlayMode.SHUFFLE) {
 						playSong(player, getShuffleSong(uuid, song),
 								gMusicMain.getConfigService().PS_TIME_UNTIL_SHUFFLE);
+					} else if (playSettings.getPlayMode() == GPlayMode.CONTINUE) {
+						playSong(player, getContinueSong(uuid, song),
+								gMusicMain.getConfigService().PS_TIME_UNTIL_CONTINUE);
 					} else if (playSettings.getPlayMode() == GPlayMode.CATEGORY) {
 						playSong(player, getNextSongInPlaylist(uuid, song),
-								gMusicMain.getConfigService().PS_TIME_UNTIL_SHUFFLE);
+								gMusicMain.getConfigService().PS_TIME_UNTIL_CONTINUE);
 					} else {
 							playStates.remove(uuid);
 							GMusicGUI musicGUI = GMusicGUI.getMusicGUI(uuid);

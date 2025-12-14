@@ -39,8 +39,14 @@ public class ConfigService {
     public boolean PS_D_REVERSE;
     public boolean G_DISABLE_RANDOM_SONG;
     public boolean G_DISABLE_PLAYLIST;
-    public boolean G_DISABLE_OPTIONS;
-    public boolean G_DISABLE_SEARCH;
+    public boolean G_DISABLE_SPEAKER_MODE;
+    public boolean G_DISABLE_FAVORITES;
+    public long SPEAKER_DEFAULT_RANGE;
+    public long MAX_SPEAKER_RANGE;
+    public boolean PS_D_SPEAKER_MODE;
+    public boolean PS_D_MUTE_SPEAKERS;
+    public long JUKEBOX_AUTO_STOP_DELAY;
+    public long JUKEBOX_PARTICLE_RANGE;
 
     private final GMusicMain gMusicMain;
 
@@ -105,8 +111,15 @@ public class ConfigService {
 
         G_DISABLE_RANDOM_SONG = gMusicMain.getConfig().getBoolean("Options.GUI.disable-random-song", false);
         G_DISABLE_PLAYLIST = gMusicMain.getConfig().getBoolean("Options.GUI.disable-playlist", false);
-        G_DISABLE_OPTIONS = gMusicMain.getConfig().getBoolean("Options.GUI.disable-options", false);
-        G_DISABLE_SEARCH = gMusicMain.getConfig().getBoolean("Options.GUI.disable-search", false);
+        G_DISABLE_SPEAKER_MODE = gMusicMain.getConfig().getBoolean("Options.GUI.disable-speaker-mode", false);
+        G_DISABLE_FAVORITES = gMusicMain.getConfig().getBoolean("Options.GUI.disable-favorites", false);
+
+        SPEAKER_DEFAULT_RANGE = gMusicMain.getConfig().getLong("Options.speaker-default-range", 30);
+        MAX_SPEAKER_RANGE = gMusicMain.getConfig().getLong("Options.max-speaker-range", 100);
+        PS_D_SPEAKER_MODE = gMusicMain.getConfig().getBoolean("Options.PlayerSettings.Default.speaker-mode", false);
+        PS_D_MUTE_SPEAKERS = gMusicMain.getConfig().getBoolean("Options.PlayerSettings.Default.mute-speakers", false);
+        JUKEBOX_AUTO_STOP_DELAY = gMusicMain.getConfig().getLong("Options.jukebox-auto-stop-delay", 300000);
+        JUKEBOX_PARTICLE_RANGE = gMusicMain.getConfig().getLong("Options.jukebox-particle-range", 100);
     }
 
 }

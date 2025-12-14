@@ -1,41 +1,53 @@
 #
-# Language-File created by: Gecolay,turu64
+# GMusic Japanese Language File
+# by Gecolay, turu64
 #
-  
-  
-  
+
 Plugin:
-  
-  plugin-start: "[P]&a プラグインが正常に有効化されました。"
+  plugin-enabled: "[P]&a プラグインが正常に有効化されました。"
   plugin-link: "[P]&a &6%Link%&aと正常にリンクしました！"
-  plugin-update: "[P]&a このプラグインには新しいバージョンがあります:&6 %NewVersion%&a!\\n[P]&a 現在使用中の古いバージョン:&6 %Version%&a!\\n[P]&a 最新バージョンをダウンロード:\\n[P]&6 %Path%"
-  plugin-stop: "[P]&a プラグインが正常に無効化されました。"
-  plugin-prefix: "&7[&d音楽プレイヤー&7]"
-  
-  
-  
+  plugin-update: "[P]&a 新バージョンがあります:&6 %NewVersion%&a!\n[P]&a 現在のバージョン:&6 %Version%&a!\n[P]&a ダウンロード:\n[P]&6 %Path%"
+  plugin-data: "[P]&c データストレージへの接続に失敗しました。サーバーコンソールを確認してください！"
+  plugin-version: "[P]&c このサーバーバージョンではプラグインを使用できません！ (&b%Version%&c)"
+  plugin-reload: "[P]&a プラグインが正常にリロードされました。"
+  plugin-disabled: "[P]&a プラグインが正常に無効化されました。"
+  plugin-prefix: "&7[&d音楽&7]"
+
 Messages:
-  
-  command-config-reload: "[P]&a 設定が正常にリロードされました。"
   command-permission-error: "[P]&c このコマンドを使用する権限がありません！"
-  command-consol-error: "[P]&c このコマンドはプレイヤー専用です！"
-  command-gmusic-play-use-error: "[P]&c コマンド: /music play <ID>"
-  command-gmusic-play-id-error: "[P]&c 曲ID&6 %ID%&cは存在しません！"
-  command-gmusic-playing-none: "[P]&a 現在再生中の曲はありません。"
-  command-gmusic-playing: "[P]&a 再生中:&6 %Title%"
-  command-gmusic-use-error: "[P]&c コマンド: /music help"
+  command-sender-error: "[P]&c このコマンドはプレイヤー専用です！"
+  command-version-error: "[P]&c サーバーバージョンが古いです！ (&b%Version%&c)\n[P]&c この機能を使うにはサーバーをアップグレードしてください！"
+  command-gmusic-use-error: "[P]&c /music help でコマンド一覧を表示"
+  command-gmusic-help: "[P]&6&l=== &e&lGMusic コマンドヘルプ &6&l===\n[P]&a/music &7- GUIを開く\n[P]&a/music play <曲ID> &7- 指定した曲を再生\n[P]&a/music playing &7- 再生中の曲を表示\n[P]&a/music random &7- ランダム再生\n[P]&a/music stop &7- 再生を停止\n[P]&a/music pause &7- 一時停止\n[P]&a/music resume &7- 再開\n[P]&a/music skip &7- 次の曲へスキップ\n[P]&a/music loop &7- ループ再生切り替え\n[P]&a/music toggle &7- ジュークボックス音ミュート切替\n[P]&a/music reload &7- 楽曲を再読み込み (権限必要)\n[P]&a/music speaker &7- スピーカーモード (OP専用)"
+  command-gmusic-loop-on: "[P]&a ループ再生を&2有効&aにしました。"
+  command-gmusic-loop-off: "[P]&a ループ再生を&c無効&aにしました。"
+  command-gmusic-reload-songs: "[P]&a 楽曲をリロードしました。(&6%Count%&a曲)"
+  command-gmusic-speaker-on: "[P]&a スピーカーモードを&2有効&aにしました。(均一半径: &b%Uniform%&a, 最大半径: &b%Max%&a)"
+  command-gmusic-speaker-off: "[P]&a スピーカーモードを&c無効&aにしました。"
+  command-gmusic-speaker-range: "[P]&a スピーカー範囲を変更しました。(均一半径: &b%Uniform%&a, 最大半径: &b%Max%&a)"
+  command-gmusic-speaker-usage: "[P]&c 使用方法: /music speaker <on|off|range> [均一半径] [最大半径]"
+  command-gmusic-song-error: "[P]&c 曲&6 %Song%&cは存在しません！"
+  command-gmusic-no-song-error: "[P]&c 曲がありません！"
+  command-gmusic-play: "[P]&a 再生中:&6 %SongTitle%"
+  command-gmusic-playing-error: "[P]&c 現在再生中の曲はありません！"
+  command-gmusic-playing: "[P]&a 再生中:&6 %SongTitle%"
+  command-gmusic-stop: "[P]&a 曲を停止しました。"
+  command-gmusic-paused-error: "[P]&c 一時停止中の曲はありません！"
+  command-gmusic-pause: "[P]&a 曲を一時停止しました。"
+  command-gmusic-resume: "[P]&a 曲を再開しました。"
   command-gmusic-toggle-on: "[P]&a 専用ジュークボックスからの音を&2オン&aにしました。"
+  command-gmusic-toggle-off: "[P]&a 専用ジュークボックスからの音を&cオフ&aにしました。"
   command-agmusic-use-error: "[P]&c コマンド: /amusic help"
   command-agmusic-download-use-error: "[P]&c コマンド: /amusic download <Type> <Name> <Path>"
   command-agmusic-download-folder-error: "[P]&c フォルダ&6 %Folder%&cが存在しません！"
   command-agmusic-download-name-error: "[P]&c ファイル名&6 %Name%&cは既に存在します！"
   command-agmusic-download-error: "[P]&c ファイルのダウンロードエラー:&6 %Error%"
   command-agmusic-download: "[P]&a ファイルが正常にダウンロードされました。"
-  command-agmusic-jukebox-use-error: "[P]&c コマンド: /amusic jukebox <Player> [<Amount>]"
+  command-agmusic-jukebox-use-error: "[P]&c コマンド: /amusic jukebox <Player> [Amount]"
   command-agmusic-jukebox-online-error: "[P]&c プレイヤー&6 %Player%&cはオンラインではありません！"
   command-agmusic-jukebox-amount-error: "[P]&c 数量&b %Amount%&cが無効です！"
   command-agmusic-jukebox: "[P]&a &6%Player%&aに&b %Amount% x&aジュークボックスを渡しました。"
-  command-agmusic-disc-use-error: "[P]&c コマンド: /amusic disc <Player> <ID> [<Amount>]"
+  command-agmusic-disc-use-error: "[P]&c コマンド: /amusic disc <Player> <ID> [Amount]"
   command-agmusic-disc-online-error: "[P]&c プレイヤー&6 %Player%&cはオンラインではありません！"
   command-agmusic-disc-id-error: "[P]&c 曲ID&6 %ID%&cは存在しません！"
   command-agmusic-disc-amount-error: "[P]&c 数量&b %Amount%&cが無効です！"
@@ -50,79 +62,69 @@ Messages:
   command-agmusic-edit-use-error: "[P]&c コマンド: /amusic edit <Option> <Value>"
   command-agmusic-edit-id-error: "[P]&c 曲ID&6 %ID%&cは存在しません！"
   command-agmusic-edit-get-title: "[P]&a 曲ID&6 %ID%&aのタイトル:&6 %Title%"
-  command-agmusic-edit-title: "[P]&a 曲ID&6 %ID%&aのタイトルを&6 %Title%&aに設定しました"
+  command-agmusic-edit-title: "[P]&a 曲ID&6 %ID%&aのタイトルを&6 %Title%&aに設定しました。"
   command-agmusic-edit-get-author: "[P]&a 曲ID&6 %ID%&aのアーティスト:&6 %Author%"
-  command-agmusic-edit-author: "[P]&a 曲ID&6 %ID%&aのアーティストを&6 %Author%&aに設定しました"
+  command-agmusic-edit-author: "[P]&a 曲ID&6 %ID%&aのアーティストを&6 %Author%&aに設定しました。"
   command-agmusic-edit-get-oauthor: "[P]&a 曲ID&6 %ID%&aの原作者:&6 %OAuthor%"
-  command-agmusic-edit-oauthor: "[P]&a 曲ID&6 %ID%&aの原作者を&6 %OAuthor%&aに設定しました"
+  command-agmusic-edit-oauthor: "[P]&a 曲ID&6 %ID%&aの原作者を&6 %OAuthor%&aに設定しました。"
   command-agmusic-edit-get-description: "[P]&a 曲ID&6 %ID%&aの説明:&6 %Description%"
-  command-agmusic-edit-description: "[P]&a 曲ID&6 %ID%&aの説明を&6 %Description%&aに設定しました"
-  command-agmusic-edit-description: "[P]&a The Description of the Song-ID&6 %ID%&a set to:&6 %Description%"
-  actionbar-play: "&a再生中:&b %Title%&7 -&6 %OAuthor%"
+  command-agmusic-edit-description: "[P]&a 曲ID&6 %ID%&aの説明を&6 %Description%&aに設定しました。"
+  actionbar-play: "&a再生中:&b %SongTitle%&7 -&6 %OAuthor%"
+  actionbar-playing: "&a再生中:&b %SongTitle%&7 -&6 %OAuthor%"
   actionbar-stop: "&a曲が終わりました"
   actionbar-pause: "&a一時停止中"
   actionbar-resume: "&a再生を再開しました"
-  actionbar-now-playing: "&a再生中:&b %Title%&7 -&6 %OAuthor%"
-  
-  
+
 MusicGUI:
-  
-  title: "&d&l音楽プレイヤーメニュー"
-  
-  music-pause: "&6再生停止"
-  music-resume: "&6再生再開"
-  music-stop: "&6再生終了"
-  music-skip: "&aスキップ"
+  title: "&d&l✦ &5&lミュージック プレイヤー &d&l✦"
+  jukebox-title: "&e&l✧ &6&lミュージック ボックス &e&l✧"
+  music-pause: "&6一時停止"
+  music-resume: "&6再開"
+  music-stop: "&6停止"
+  music-skip: "&6スキップ"
   music-random: "&6ランダム再生"
   music-back: "&6戻る"
-  music-add-favorite: "&d★ お気に入りに追加"
-  music-add-favorite: "&d★ お気に入りに追加"
-  
+  music-add-favorite: "&d\u2605 お気に入りに追加"
+  music-remove-favorite: "&c\u2606 お気に入りから削除"
   music-playlist: "&cプレイリスト"
   music-playlist-skip: "&6曲をスキップ"
   music-playlist-mode-default: "&aモード:&6 通常"
   music-playlist-mode-favorites: "&aモード:&6 お気に入り"
   music-playlist-mode-radio: "&aモード:&6 ラジオ"
-  
   music-options: "&c設定"
   music-options-volume: "&a音量:&b %Volume%%"
   music-options-join: "&aログイン時再生:&6 %Join%"
   music-options-play-mode-once: "&a再生設定:&6 一度のみ"
   music-options-play-mode-shuffle: "&a再生設定:&6 シャッフル"
   music-options-play-mode-repeat: "&a再生設定:&6 ループ"
-  music-options-play-mode-category: "&a再生設定:&6 カテゴリ内プレイ"
-  music-options-particle: "&aパーティクル表示:&6 %Particle%"
+  music-options-play-mode-continue: "&a再生設定:&6 連続再生"
+  music-options-play-mode-category: "&a再生設定:&6 カテゴリ内"
+  music-options-particle: "&aパーティクル:&6 %Particle%"
   music-options-reverse: "&a逆再生:&6 %Reverse%"
   music-options-range: "&a可聴範囲:&b %Range%"
-  music-options-speaker-mode: "&aスピーカーモード:&6 %SpeakerMode%&7 (範囲: &b%Range%&7ブロック)"
+  music-options-speaker-mode: "&aスピーカー:&6 %SpeakerMode%&7 (&b%Range%&7ブロック)"
   music-options-speaker-range: "&7範囲:&b %Range%&7 ブロック"
-  music-options-mute-speakers: "&a他人のスピーカーをミュート:&6 %MuteSpeakers%"
-  
-  music-options-true: "はい"
-  music-options-false: "いいえ"
-  
+  music-options-mute-speakers: "&a他スピーカーミュート:&6 %MuteSpeakers%"
+  music-options-true: "オン"
+  music-options-false: "オフ"
   music-category-all: "&e全ての曲"
   music-category: "&eカテゴリ:&6 %Category%"
+  music-category-uncategorized: "未分類"
   music-all-songs: "&e全ての曲"
-  
-  music-search-none: "&c曲名で検索"
+  music-speaker-mode: "&aスピーカー:&6 %SpeakerMode%"
+  music-mute-speakers: "&a他スピーカーミュート:&6 %MuteSpeakers%"
+  music-search-none: "&c検索"
   music-search: "&c検索:&6 %Search%"
-  music-search-menu-title: "&c曲名や単語で検索しよう！"
-  music-search-menu-field: "ここに入力"
-  
+  music-search-menu-title: "&c曲を検索"
+  music-search-menu-field: "検索キーワード"
   last-page: "&6前のページ"
   next-page: "&6次のページ"
-  
   disc-title: "&b%Title%&7 -&6 %OAuthor%"
-  disc-empty-author: "アーティスト不明"
-  disc-empty-oauthor: "作成者不明"
-  disc-favorite: "&cお気に入り"
-  
-  
-  
+  disc-empty-author: "不明"
+  disc-empty-oauthor: "不明"
+  disc-favorite: "&c\u2665 お気に入り"
+
 Items:
-  
-  jukebox-title: "&d&l音楽プレイヤーブロック"
-  jukebox-description: "&d音楽を再生するブロック\\n&a/musicコマンドと同様に使用できます"
-  
+  jukebox-title: "&d&l✦ &5&lMusic Box &d&l✦"
+  jukebox-description: "&7音楽を鳴らせる特殊なブロック！||&8右クリックでGUIを開く"
   disc-title: "&b%Title%&7 -&6 %OAuthor%"

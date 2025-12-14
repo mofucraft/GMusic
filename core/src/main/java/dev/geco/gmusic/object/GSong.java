@@ -27,6 +27,7 @@ public class GSong {
 	private final HashMap<Long, List<GNotePart>> content = new HashMap<>();
 	private long noteAmount = 0;
 	private long length = 0;
+	private String category;
 
     public GSong(File gnbsFile) {
         YamlConfiguration config = YamlConfiguration.loadConfiguration(gnbsFile);
@@ -131,5 +132,22 @@ public class GSong {
 	public long getNoteAmount() { return noteAmount; }
 
 	public long getLength() { return length; }
+
+	public String getCategory() { return category; }
+
+	public void setCategory(String category) { this.category = category; }
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj) return true;
+		if (obj == null || getClass() != obj.getClass()) return false;
+		GSong other = (GSong) obj;
+		return id != null && id.equals(other.id);
+	}
+
+	@Override
+	public int hashCode() {
+		return id != null ? id.hashCode() : 0;
+	}
 
 }

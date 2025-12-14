@@ -5,7 +5,8 @@ public enum GPlayMode {
     DEFAULT(0),
     SHUFFLE(1),
     LOOP(2),
-    CONTINUE(3);
+    CONTINUE(3),
+    CATEGORY(4);
 
     private final int id;
 

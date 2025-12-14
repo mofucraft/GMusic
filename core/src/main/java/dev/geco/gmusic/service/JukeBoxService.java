@@ -31,6 +31,7 @@ public class JukeBoxService {
 	private final NamespacedKey jukeBoxKey;
 	private final HashMap<Block, UUID> jukeBoxBlocks = new HashMap<>();
 	private final HashMap<Block, UUID> radioJukeBoxBlocks = new HashMap<>();
+	private final HashMap<UUID, Long> emptyRangeStartTime = new HashMap<>();
 	private final Random random = new Random();
 
 	public JukeBoxService(GMusicMain gMusicMain) {
@@ -51,7 +52,9 @@ public class JukeBoxService {
 		itemStack.setAmount(1);
 		ItemMeta itemMeta = itemStack.getItemMeta();
 		itemMeta.setDisplayName(gMusicMain.getMessageService().getMessage("Items.jukebox-title"));
-		itemMeta.setLore(List.of(gMusicMain.getMessageService().getMessage("Items.jukebox-description")));
+		// 改行対応: ||で分割して複数行のloreにする
+		String description = gMusicMain.getMessageService().getMessage("Items.jukebox-description");
+		itemMeta.setLore(List.of(description.split("\\|\\|")));
 		itemMeta.getPersistentDataContainer().set(jukeBoxKey, PersistentDataType.BOOLEAN, true);
 		itemStack.setItemMeta(itemMeta);
 		return itemStack;
@@ -192,15 +195,43 @@ public class JukeBoxService {
 
 					HashMap<Player, Double> pl = getPlayersInRange(boxLocation, playSettings.getRange());
 
-					if (lnp != null && playSettings.getVolume() > 0 && !pl.isEmpty()) {
-						if (playSettings.isShowingParticles()) {
-							Location PL = boxLocation.clone().add(random.nextDouble(), 1, random.nextDouble());
-							for (Player P : pl.keySet())
-								P.spawnParticle(Particle.NOTE, PL, 0, random.nextDouble(), random.nextDouble(), random.nextDouble(), 1);
+					// プレイヤーが範囲内にいない場合は5分後に停止
+					if (pl.isEmpty()) {
+						long now = System.currentTimeMillis();
+						if (!emptyRangeStartTime.containsKey(uuid)) {
+							emptyRangeStartTime.put(uuid, now);
+						} else {
+							long emptyTime = now - emptyRangeStartTime.get(uuid);
+							if (emptyTime >= gMusicMain.getConfigService().JUKEBOX_AUTO_STOP_DELAY) {
+								timer.cancel();
+								emptyRangeStartTime.remove(uuid);
+								gMusicMain.getPlayService().removePlayState(uuid);
+								GMusicGUI m = GMusicGUI.getMusicGUI(uuid);
+								if (m != null) m.setPauseResumeBar();
+								return;
+							}
+						}
+					} else {
+						// プレイヤーが範囲内にいる場合はタイマーをリセット
+						emptyRangeStartTime.remove(uuid);
+					}
+
+					// パーティクル用に広い範囲のプレイヤーを取得
+					HashMap<Player, Double> particlePlayers = getPlayersInRange(boxLocation, gMusicMain.getConfigService().JUKEBOX_PARTICLE_RANGE);
+
+					if (lnp != null && playSettings.getVolume() > 0) {
+						// ジュークボックスから常にパーティクルを出す（広い範囲のプレイヤーに表示）
+						Location particleLocation = boxLocation.clone().add(0.5 + random.nextDouble() * 0.5 - 0.25, 1.2, 0.5 + random.nextDouble() * 0.5 - 0.25);
+						for (Player P : particlePlayers.keySet()) {
+							P.spawnParticle(Particle.NOTE, particleLocation, 0, random.nextDouble(), random.nextDouble(), random.nextDouble(), 1);
 						}
 
 						for (GNotePart np : lnp) {
 							for (Player P : pl.keySet()) {
+								// プレイヤーが「他人のスピーカーをミュート」している場合はスキップ
+								GPlaySettings playerSettings = gMusicMain.getPlaySettingsService().getPlaySettings(P.getUniqueId());
+								if (playerSettings != null && playerSettings.isMuteSpeakers()) continue;
+
 								if (np.getSound() != null) {
 									float volume = (float) ((pl.get(P) - playSettings.getRange()) * playSettings.getFixedVolume() / (double) -playSettings.getRange()) * np.getVolume();
 
@@ -239,7 +270,6 @@ public class JukeBoxService {
 						}
 					} else {
 						playState.setTickPosition(playSettings.isReverseMode() ? z - 1 : z + 1);
-						//if(gMusicMain.getCManager().A_SHOW_WHILE_PLAYING) for(Player P : pl.keySet()) P.spigot().sendMessage(ChatMessageType.ACTION_BAR, anp);
 					}
 				} else timer.cancel();
 			}
@@ -256,6 +286,7 @@ public class JukeBoxService {
 		if(playState == null) return;
 
 		playState.getTimer().cancel();
+		emptyRangeStartTime.remove(uuid);
 
 		gMusicMain.getPlayService().removePlayState(uuid);
 

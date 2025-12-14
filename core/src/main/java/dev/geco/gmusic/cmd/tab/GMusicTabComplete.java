@@ -26,6 +26,7 @@ public class GMusicTabComplete implements TabCompleter {
 
         if(args.length == 1) {
             if(gMusicMain.getPermissionService().hasPermission(sender, "Music")) {
+                complete.add("help");
                 complete.add("play");
                 complete.add("playing");
                 complete.add("random");
@@ -34,6 +35,13 @@ public class GMusicTabComplete implements TabCompleter {
                 complete.add("resume");
                 complete.add("skip");
                 complete.add("toggle");
+                complete.add("loop");
+            }
+            if(gMusicMain.getPermissionService().hasPermission(sender, "Reload")) {
+                complete.add("reload");
+            }
+            if(sender.isOp()) {
+                complete.add("speaker");
             }
             if(!args[args.length - 1].isEmpty()) {
                 for(String entry : complete) if(entry.toLowerCase().startsWith(args[args.length - 1].toLowerCase())) completeStarted.add(entry);
@@ -44,6 +52,11 @@ public class GMusicTabComplete implements TabCompleter {
                 if(args[0].equalsIgnoreCase("play")) {
                     for(GSong song : gMusicMain.getSongService().getSongs()) complete.add(song.getId());
                 }
+            }
+            if(sender.isOp() && args[0].equalsIgnoreCase("speaker")) {
+                complete.add("on");
+                complete.add("off");
+                complete.add("range");
             }
             if(!args[args.length - 1].isEmpty()) {
                 for(String entry : complete) if(entry.toLowerCase().startsWith(args[args.length - 1].toLowerCase())) completeStarted.add(entry);

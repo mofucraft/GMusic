@@ -22,11 +22,17 @@ Options:
     # Defines whether the resource pack should be automatically downloaded and applied to the user
     force-resources: false
 
-  # Defines the range a player can hear the sound of a jukebox
-  jukebox-range: 50
+  # Defines the default range a player can hear the sound of a jukebox
+  jukebox-range: 20
 
-  # Defines the max range of a jukebox
+  # Defines the max range of a jukebox (GUI limit)
   max-jukebox-range: 50
+
+  # Defines the delay (in milliseconds) before jukebox auto-stops when no players are in range (5 minutes = 300000)
+  jukebox-auto-stop-delay: 300000
+
+  # Defines the range at which players can see jukebox particles (should be larger than max-jukebox-range)
+  jukebox-particle-range: 100
 
   # Defines the default range for speaker mode
   speaker-default-range: 30
@@ -82,7 +88,5 @@ Options:
 
     disable-random-song: false
     disable-playlist: false
-    disable-options: false
-    disable-search: false
     disable-speaker-mode: false
     disable-favorites: false
