@@ -18,6 +18,7 @@ import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
+import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.server.PluginDisableEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
@@ -260,11 +261,12 @@ public class GMusicGUI {
 									playSettings.getFavorites().add(currentSong);
 									wasAdded = true;
 								}
-								// お気に入り追加時に経験値の効果音を再生（通常プレイヤーGUIの場合のみ）
-								if(wasAdded && type != MenuType.JUKEBOX) {
-									Player target = Bukkit.getPlayer(uuid);
-									if(target != null) {
-										target.playSound(target.getLocation(), org.bukkit.Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
+								// 効果音を再生（クリックしたプレイヤーに対して）
+								if(clicker instanceof Player clickPlayer) {
+									if(wasAdded) {
+										clickPlayer.playSound(clickPlayer.getLocation(), org.bukkit.Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
+									} else {
+										clickPlayer.playSound(clickPlayer.getLocation(), org.bukkit.Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 0.5f);
 									}
 								}
 								// データベースに保存
@@ -308,10 +310,20 @@ public class GMusicGUI {
 							// ジュークボックスの場合
 							if(click == ClickType.MIDDLE) {
 								// お気に入りトグル
+								boolean wasAdded = false;
 								if(playSettings.getFavorites().contains(song)) {
 									playSettings.getFavorites().remove(song);
 								} else {
 									playSettings.getFavorites().add(song);
+									wasAdded = true;
+								}
+								// 効果音を再生
+								if(clicker instanceof Player clickPlayer) {
+									if(wasAdded) {
+										clickPlayer.playSound(clickPlayer.getLocation(), org.bukkit.Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
+									} else {
+										clickPlayer.playSound(clickPlayer.getLocation(), org.bukkit.Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 0.5f);
+									}
 								}
 								gMusicMain.getPlaySettingsService().savePlaySettings(uuid, playSettings);
 								setPage(page);
@@ -331,9 +343,11 @@ public class GMusicGUI {
 									playSettings.getFavorites().add(song);
 									wasAdded = true;
 								}
-								// お気に入り追加時に経験値の効果音を再生
+								// 効果音を再生
 								if(wasAdded) {
 									target.playSound(target.getLocation(), org.bukkit.Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
+								} else {
+									target.playSound(target.getLocation(), org.bukkit.Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 0.5f);
 								}
 								// データベースに保存
 								gMusicMain.getPlaySettingsService().savePlaySettings(uuid, playSettings);
@@ -356,6 +370,14 @@ public class GMusicGUI {
 					event.setCancelled(true);
 					return;
 				}
+			}
+
+			@EventHandler
+			public void inventoryOpenEvent(InventoryOpenEvent event) {
+				if(!event.getInventory().equals(inventory)) return;
+				// GUIを開いた時に表示を更新（お気に入りボタン、音量表示など）
+				setPage(page);
+				setDefaultBar();
 			}
 
 			@EventHandler
@@ -485,7 +507,9 @@ public class GMusicGUI {
 			GSong currentSong = songState != null ? songState.getSong() : null;
 			itemStack = new ItemStack(Material.NETHER_STAR);
 			itemMeta = itemStack.getItemMeta();
-			boolean isFavorite = currentSong != null && playSettings.getFavorites().contains(currentSong);
+			// 明示的にUUIDから設定を取得してお気に入り状態を確認（ジュークボックスの場合はジュークボックスの設定を使用）
+			GPlaySettings currentSettings = gMusicMain.getPlaySettingsService().getPlaySettings(uuid);
+			boolean isFavorite = currentSong != null && currentSettings.getFavorites().contains(currentSong);
 			itemMeta.setDisplayName(gMusicMain.getMessageService().getMessage(isFavorite ? "MusicGUI.music-remove-favorite" : "MusicGUI.music-add-favorite"));
 			if(isFavorite) {
 				itemMeta.addEnchant(org.bukkit.enchantments.Enchantment.UNBREAKING, 1, true);
@@ -639,15 +663,18 @@ public class GMusicGUI {
 	public void setPage(int newPage) {
 		List<GSong> songs = new ArrayList<>();
 
-		if(playSettings.getPlayListMode() != GPlayListMode.RADIO) {
+		// 常に正しいUUIDから設定を取得（キャッシュから取得されるが、UUIDベースで確実に正しい設定を参照）
+		GPlaySettings currentSettings = gMusicMain.getPlaySettingsService().getPlaySettings(uuid);
+
+		if(currentSettings.getPlayListMode() != GPlayListMode.RADIO) {
 			// カテゴリが選択されている場合は最初にカテゴリで絞り込む
 			if(currentCategory != null && !currentCategory.isEmpty()) {
 				songs = gMusicMain.getSongService().getSongsByCategory(currentCategory);
 				// FAVORITESモードの場合は、カテゴリ内のお気に入りのみ
-				if(playSettings.getPlayListMode() == GPlayListMode.FAVORITES) {
+				if(currentSettings.getPlayListMode() == GPlayListMode.FAVORITES) {
 					List<GSong> favoriteSongs = new ArrayList<>();
 					for(GSong song : songs) {
-						if(playSettings.getFavorites().contains(song)) {
+						if(currentSettings.getFavorites().contains(song)) {
 							favoriteSongs.add(song);
 						}
 					}
@@ -655,7 +682,7 @@ public class GMusicGUI {
 				}
 			} else {
 				// カテゴリが選択されていない場合はプレイリストモードに応じて取得
-				songs = playSettings.getPlayListMode() == GPlayListMode.FAVORITES ? playSettings.getFavorites() : gMusicMain.getSongService().getSongs();
+				songs = currentSettings.getPlayListMode() == GPlayListMode.FAVORITES ? currentSettings.getFavorites() : gMusicMain.getSongService().getSongs();
 			}
 
 			// 検索キーワードがある場合は検索でフィルタ
@@ -687,7 +714,7 @@ public class GMusicGUI {
 				));
 				List<String> description = new ArrayList<>();
 				for(String descriptionRow : song.getDescription()) description.add(gMusicMain.getMessageService().toFormattedMessage("&6" + descriptionRow));
-				if(playSettings.getFavorites().contains(song)) description.add(gMusicMain.getMessageService().getMessage("MusicGUI.disc-favorite"));
+				if(currentSettings.getFavorites().contains(song)) description.add(gMusicMain.getMessageService().getMessage("MusicGUI.disc-favorite"));
 				itemMeta.setLore(description);
 				pageSongs.put(songPosition % 27, song);
 				itemMeta.addItemFlags(ItemFlag.values());

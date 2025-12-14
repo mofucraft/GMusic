@@ -28,8 +28,8 @@ Options:
   # Defines the max range of a jukebox (GUI limit)
   max-jukebox-range: 50
 
-  # Defines the delay (in milliseconds) before jukebox auto-stops when no players are in range (5 minutes = 300000)
-  jukebox-auto-stop-delay: 300000
+  # Defines the delay (in milliseconds) before jukebox auto-stops when no players are in range (10 minutes = 600000)
+  jukebox-auto-stop-delay: 600000
 
   # Defines the range at which players can see jukebox particles (should be larger than max-jukebox-range)
   jukebox-particle-range: 100
