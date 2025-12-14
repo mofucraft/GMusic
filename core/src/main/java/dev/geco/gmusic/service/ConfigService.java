@@ -29,6 +29,7 @@ public class ConfigService {
     public boolean ENVIRONMENT_EFFECTS;
     public int PS_TIME_UNTIL_SHUFFLE;
     public int PS_TIME_UNTIL_REPEAT;
+    public int PS_TIME_UNTIL_CONTINUE;
     public boolean PS_SAVE_ON_QUIT;
     public int PS_D_PLAYLIST_MODE;
     public int PS_D_VOLUME;
@@ -93,6 +94,7 @@ public class ConfigService {
 
         PS_TIME_UNTIL_SHUFFLE = gMusicMain.getConfig().getInt("Options.PlayerSettings.time-until-shuffle", 1000);
         PS_TIME_UNTIL_REPEAT = gMusicMain.getConfig().getInt("Options.PlayerSettings.time-until-repeat", 1000);
+        PS_TIME_UNTIL_CONTINUE = gMusicMain.getConfig().getInt("Options.PlayerSettings.time-until-continue", 1000);
         PS_SAVE_ON_QUIT = gMusicMain.getConfig().getBoolean("Options.PlayerSettings.save-on-quit", true);
         PS_D_PLAYLIST_MODE = gMusicMain.getConfig().getInt("Options.PlayerSettings.Default.playlist-mode", 0);
         PS_D_VOLUME = gMusicMain.getConfig().getInt("Options.PlayerSettings.Default.volume", 70);

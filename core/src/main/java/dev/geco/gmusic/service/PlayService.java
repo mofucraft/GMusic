@@ -78,6 +78,12 @@ public class PlayService {
 		return !songs.isEmpty() ? songs.get(random.nextInt(songs.size())) : null;
 	}
 
+	public GSong getContinueSong(UUID uuid, GSong song) {
+		GPlaySettings playSettings = gMusicMain.getPlaySettingsService().getPlaySettings(uuid);
+		List<GSong> songs = playSettings.getPlayListMode() == GPlayListMode.FAVORITES ? playSettings.getFavorites() : gMusicMain.getSongService().getSongs();
+		return !songs.isEmpty() ? songs.indexOf(song) + 1 == songs.size() ? songs.get(0) : songs.get(songs.indexOf(song) + 1) : null;
+	}
+
 	public GSong getShuffleSong(UUID uuid, GSong song) {
 		GPlaySettings playSettings = gMusicMain.getPlaySettingsService().getPlaySettings(uuid);
 		List<GSong> songs;
