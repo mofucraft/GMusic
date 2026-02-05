@@ -129,7 +129,12 @@ public class NBSConverter {
 
 			for(int instrumentCount = 0; instrumentCount < midiInstrumentsLength; instrumentCount++) {
 				readString(dataInput);
-				midiInstruments.add(readString(dataInput).replace(".ogg", ""));
+				String soundPath = readString(dataInput).replace(".ogg", "");
+				// Convert file path to Minecraft sound resource location
+				// e.g., "minecraft/random/anvil_land" -> "random.anvil_land"
+				if(soundPath.startsWith("minecraft/")) soundPath = soundPath.substring("minecraft/".length());
+				soundPath = soundPath.replace("/", ".");
+				midiInstruments.add(soundPath);
 				dataInput.readByte();
 				dataInput.readByte();
 			}
