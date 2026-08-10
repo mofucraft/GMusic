@@ -20,7 +20,7 @@ public class NBSConverter {
 		this.gMusicMain = gMusicMain;
 	}
 
-	public void convertNBSFile(File nbsFile) {
+	public boolean convertNBSFile(File nbsFile) {
 		try {
 			DataInputStream dataInput = new DataInputStream(Files.newInputStream(nbsFile.toPath()));
 
@@ -161,7 +161,11 @@ public class NBSConverter {
 			gnbsStruct.set("Song.Content.Main", gnbsContent);
 
 			gnbsStruct.save(gnbsFile);
+
+			return true;
 		} catch (Throwable e) { gMusicMain.getLogger().log(Level.SEVERE, "Could not convert nbs file to gnbs file!", e); }
+
+		return false;
 	}
 
 	private short readShort(DataInputStream dataInput) throws IOException {

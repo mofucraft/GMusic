@@ -43,6 +43,8 @@ Messages:
   command-agmusic-download-name-error: "[P]&c Filename&6 %Name%&c already exists!"
   command-agmusic-download-error: "[P]&c File download error:&6 %Error%"
   command-agmusic-download: "[P]&a File downloaded successfully."
+  command-agmusic-download-convert: "[P]&a File converted successfully. (&6%SongName%&a)"
+  command-agmusic-download-convert-error: "[P]&c File conversion failed!"
   command-agmusic-jukebox-use-error: "[P]&c Command: /amusic jukebox <Player> [Amount]"
   command-agmusic-jukebox-online-error: "[P]&c Player&6 %Player%&c is not online!"
   command-agmusic-jukebox-amount-error: "[P]&c Amount&b %Amount%&c is invalid!"

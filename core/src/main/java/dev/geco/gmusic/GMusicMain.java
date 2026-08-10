@@ -28,6 +28,7 @@ import dev.geco.gmusic.service.VersionService;
 import dev.geco.gmusic.service.message.PaperMessageService;
 import dev.geco.gmusic.service.message.SpigotMessageService;
 import dev.geco.gmusic.util.EnvironmentUtil;
+import dev.geco.gmusic.util.FileUtil;
 import dev.geco.gmusic.util.SteroNoteUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
@@ -58,6 +59,7 @@ public class GMusicMain extends JavaPlugin {
     private NBSConverter nbsConverter;
     private EnvironmentUtil environmentUtil;
     private SteroNoteUtil steroNoteUtil;
+    private FileUtil fileUtil;
     private boolean supportsPaperFeature = false;
     private boolean supportsTaskFeature = false;
 
@@ -95,6 +97,8 @@ public class GMusicMain extends JavaPlugin {
 
     public SteroNoteUtil getSteroNoteUtil() { return steroNoteUtil; }
 
+    public FileUtil getFileUtil() { return fileUtil; }
+
     public boolean supportsPaperFeature() { return supportsPaperFeature; }
 
     public boolean supportsTaskFeature() { return supportsTaskFeature; }
@@ -120,6 +124,7 @@ public class GMusicMain extends JavaPlugin {
 
         environmentUtil = new EnvironmentUtil();
         steroNoteUtil = new SteroNoteUtil();
+        fileUtil = new FileUtil();
 
         loadFeatures();
 

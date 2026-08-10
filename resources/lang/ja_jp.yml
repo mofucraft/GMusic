@@ -43,6 +43,8 @@ Messages:
   command-agmusic-download-name-error: "[P]&c ファイル名&6 %Name%&cは既に存在します！"
   command-agmusic-download-error: "[P]&c ファイルのダウンロードエラー:&6 %Error%"
   command-agmusic-download: "[P]&a ファイルが正常にダウンロードされました。"
+  command-agmusic-download-convert: "[P]&a ファイルを正常に変換しました。(&6%SongName%&a)"
+  command-agmusic-download-convert-error: "[P]&c ファイルの変換に失敗しました！"
   command-agmusic-jukebox-use-error: "[P]&c コマンド: /amusic jukebox <Player> [Amount]"
   command-agmusic-jukebox-online-error: "[P]&c プレイヤー&6 %Player%&cはオンラインではありません！"
   command-agmusic-jukebox-amount-error: "[P]&c 数量&b %Amount%&cが無効です！"
