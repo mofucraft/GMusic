@@ -53,7 +53,7 @@ public class ConfigService {
     public ConfigService(GMusicMain gMusicMain) {
         this.gMusicMain = gMusicMain;
 
-        if(!gMusicMain.getVersionManager().isNewerOrVersion(18, 2)) {
+        if(!gMusicMain.getVersionManager().isNewerOrVersion(1, 18, 2)) {
             try {
                 File configFile = new File(gMusicMain.getDataFolder(), "config.yml");
                 FileConfiguration config = YamlConfiguration.loadConfiguration(configFile);

@@ -6,6 +6,7 @@ website: https://www.spigotmc.org/resources/000000
 main: ${main}
 api-version: 1.18
 folia-supported: true
+softdepend: [PlaceholderAPI]
 
 commands:
 

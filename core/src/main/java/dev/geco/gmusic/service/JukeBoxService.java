@@ -114,6 +114,7 @@ public class JukeBoxService {
 			);
 			GPlaySettings playSettings = gMusicMain.getPlaySettingsService().getPlaySettings(uuid);
 			playSettings.setRange(gMusicMain.getConfigService().JUKEBOX_RANGE);
+			gMusicMain.getPlaySettingsService().savePlaySettings(uuid, playSettings);
 			if(playSettings.getPlayListMode() == GPlayListMode.RADIO) radioJukeBoxBlocks.put(block, uuid);
 			jukeBoxBlocks.put(block, uuid);
 			new GMusicGUI(uuid, GMusicGUI.MenuType.JUKEBOX);
@@ -164,6 +165,9 @@ public class JukeBoxService {
 
 		if(gMusicMain.getConfigService().A_SHOW_MESSAGES) {
 			for(Player player : gMusicMain.getJukeBoxService().getPlayersInRange(jukeBoxBlocks.entrySet().stream().filter(entry -> entry.getValue().equals(uuid)).findFirst().get().getKey().getLocation(), playSettings.getRange()).keySet()) {
+				GPlaySettings playerSettings = gMusicMain.getPlaySettingsService().getPlaySettings(player.getUniqueId());
+				// 「他人のスピーカーをミュート」している人にはアクションバーも出さない
+				if(playerSettings != null && playerSettings.isMuteSpeakers()) continue;
 				gMusicMain.getMessageService().sendActionBarMessage(
 						player,
 						"Messages.actionbar-playing",
@@ -233,7 +237,9 @@ public class JukeBoxService {
 								if (playerSettings != null && playerSettings.isMuteSpeakers()) continue;
 
 								if (np.getSound() != null) {
-									float volume = (float) ((pl.get(P) - playSettings.getRange()) * playSettings.getFixedVolume() / (double) -playSettings.getRange()) * np.getVolume();
+									// 距離に対して二乗で減衰させる
+									float t = (float) (pl.get(P) / playSettings.getRange());
+									float volume = (1.0f - t) * (1.0f - t) * playSettings.getFixedVolume() * np.getVolume();
 
 									Location location = np.getDistance() == 0 ? P.getLocation() : gMusicMain.getSteroNoteUtil().convertToStero(P.getLocation(), np.getDistance());
 
@@ -295,6 +301,9 @@ public class JukeBoxService {
 
 		if(gMusicMain.getConfigService().A_SHOW_MESSAGES) {
 			for (Player player : gMusicMain.getJukeBoxService().getPlayersInRange(jukeBoxBlocks.entrySet().stream().filter(entry -> entry.getValue().equals(uuid)).findFirst().get().getKey().getLocation(), playSettings.getRange()).keySet()) {
+				GPlaySettings playerSettings = gMusicMain.getPlaySettingsService().getPlaySettings(player.getUniqueId());
+				// 「他人のスピーカーをミュート」している人にはアクションバーも出さない
+				if(playerSettings != null && playerSettings.isMuteSpeakers()) continue;
 				gMusicMain.getMessageService().sendActionBarMessage(player, "Messages.actionbar-stop");
 			}
 		}
@@ -310,6 +319,9 @@ public class JukeBoxService {
 		GPlaySettings playSettings = gMusicMain.getPlaySettingsService().getPlaySettings(uuid);
 		if(gMusicMain.getConfigService().A_SHOW_MESSAGES) {
 			for (Player player : gMusicMain.getJukeBoxService().getPlayersInRange(jukeBoxBlocks.entrySet().stream().filter(entry -> entry.getValue().equals(uuid)).findFirst().get().getKey().getLocation(), playSettings.getRange()).keySet()) {
+				GPlaySettings playerSettings = gMusicMain.getPlaySettingsService().getPlaySettings(player.getUniqueId());
+				// 「他人のスピーカーをミュート」している人にはアクションバーも出さない
+				if(playerSettings != null && playerSettings.isMuteSpeakers()) continue;
 				gMusicMain.getMessageService().sendActionBarMessage(player, "Messages.actionbar-pause");
 			}
 		}
@@ -325,6 +337,9 @@ public class JukeBoxService {
 		GPlaySettings playSettings = gMusicMain.getPlaySettingsService().getPlaySettings(uuid);
 		if(gMusicMain.getConfigService().A_SHOW_MESSAGES) {
 			for (Player player : gMusicMain.getJukeBoxService().getPlayersInRange(jukeBoxBlocks.entrySet().stream().filter(entry -> entry.getValue().equals(uuid)).findFirst().get().getKey().getLocation(), playSettings.getRange()).keySet()) {
+				GPlaySettings playerSettings = gMusicMain.getPlaySettingsService().getPlaySettings(player.getUniqueId());
+				// 「他人のスピーカーをミュート」している人にはアクションバーも出さない
+				if(playerSettings != null && playerSettings.isMuteSpeakers()) continue;
 				gMusicMain.getMessageService().sendActionBarMessage(player, "Messages.actionbar-resume");
 			}
 		}

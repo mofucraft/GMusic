@@ -245,8 +245,28 @@ public class GMusicGUI {
 						setDefaultBar();
 					}
 					case 50 -> {
-						// 検索ボタン（オプションボタンは削除）
-						// 現在は未使用
+						// 検索ボタン: 金床で検索語を入力
+						searchMode = true;
+						IGMusicInputGUI inputGUI = getInputGUIInstance(input -> {
+							searchKey = input != null ? input.trim() : null;
+							searchMode = false;
+							setPage(1);
+							setDefaultBar();
+							gMusicMain.getTaskService().runDelayed(() -> {
+								Player target = Bukkit.getPlayer(uuid);
+								if(target != null) target.openInventory(inventory);
+							}, 1);
+							return true;
+						}, meta -> meta.getDisplayName());
+						if(inputGUI != null) {
+							ItemStack searchItem = new ItemStack(Material.PAPER);
+							ItemMeta searchMeta = searchItem.getItemMeta();
+							searchMeta.setDisplayName(searchKey != null ? searchKey : "");
+							searchItem.setItemMeta(searchMeta);
+							if(clicker instanceof Player clickPlayer) {
+								inputGUI.open(clickPlayer, gMusicMain.getMessageService().getMessage("MusicGUI.music-search-menu-title"), searchItem);
+							}
+						}
 					}
 					case 51 -> {
 						// お気に入り追加/削除
@@ -285,6 +305,10 @@ public class GMusicGUI {
 								// Shift+クリック: 範囲調整
 								long range = playSettings.getSpeakerRange();
 								long maxRange = gMusicMain.getConfigService().MAX_SPEAKER_RANGE;
+								// 管理者でない人は既定の範囲までに制限
+								if(clicker instanceof Player clickPlayer && !gMusicMain.getPermissionService().hasPermission(clickPlayer, "AMusic.*")) {
+									maxRange = gMusicMain.getConfigService().SPEAKER_DEFAULT_RANGE;
+								}
 								boolean isDecrease = click == ClickType.SHIFT_RIGHT;
 								long newRange = isDecrease ? Math.max(range - SHIFT_RANGE_STEPS, 1) : Math.min(range + SHIFT_RANGE_STEPS, maxRange);
 								playSettings.setSpeakerRange(newRange);
@@ -499,7 +523,13 @@ public class GMusicGUI {
 			inventory.setItem(49, itemStack);
 		}
 
-		// slot 50 は空（オプションボタンは削除）
+		// 検索ボタン（slot 50）
+		itemStack = new ItemStack(Material.SPYGLASS);
+		itemMeta = itemStack.getItemMeta();
+		if(searchKey != null && !searchKey.isEmpty()) itemMeta.setDisplayName(gMusicMain.getMessageService().getMessage("MusicGUI.music-search", "%Search%", searchKey));
+		else itemMeta.setDisplayName(gMusicMain.getMessageService().getMessage("MusicGUI.music-search-none"));
+		itemStack.setItemMeta(itemMeta);
+		inventory.setItem(50, itemStack);
 
 		// お気に入り追加ボタン（slot 51）
 		if(!gMusicMain.getConfigService().G_DISABLE_FAVORITES && playSettings.getPlayListMode() != GPlayListMode.RADIO) {
