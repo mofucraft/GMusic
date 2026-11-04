@@ -30,7 +30,14 @@ public class DataService {
         this.gMusicMain = gMusicMain;
     }
 
-    public boolean connect() {
+    /** 試験用: 既に開いた接続を使う。 */
+    DataService(Connection connection, String type) {
+        this.gMusicMain = null;
+        this.connection = connection;
+        this.type = type;
+    }
+
+    public synchronized boolean connect() {
         if(isConnected()) return true;
         File dataFile = new File(gMusicMain.getDataFolder(), "data/data.yml");
         if(!dataFile.exists()) gMusicMain.saveResource("data/data.yml", false);
@@ -78,7 +85,11 @@ public class DataService {
         return null;
     }
 
-    public void execute(String query, Object... parameters) throws SQLException {
+    /*
+     * 接続は 1 本を共有するため、メインスレッドと非同期保存の両方から使えるよう
+     * すべての入口を synchronized にする。
+     */
+    public synchronized void execute(String query, Object... parameters) throws SQLException {
         ensureConnection();
         try(PreparedStatement preparedStatement = connection.prepareStatement(query)) {
             for(int i = 1; i <= parameters.length; i++) preparedStatement.setObject(i, parameters[i - 1]);
@@ -86,11 +97,35 @@ public class DataService {
         }
     }
 
-    public ResultSet executeAndGet(String query, Object... parameters) throws SQLException {
+    public synchronized ResultSet executeAndGet(String query, Object... parameters) throws SQLException {
         ensureConnection();
         PreparedStatement preparedStatement = connection.prepareStatement(query);
         for(int i = 1; i <= parameters.length; i++) preparedStatement.setObject(i, parameters[i - 1]);
+        // ResultSet を閉じたときに PreparedStatement も閉じる（以前は文が閉じられず溜まっていた）
+        preparedStatement.closeOnCompletion();
         return preparedStatement.executeQuery();
+    }
+
+    @FunctionalInterface
+    public interface SqlWork { void run() throws SQLException; }
+
+    /**
+     * work の中の execute をひとつのトランザクションにまとめる。途中で失敗したら全部取り消す。
+     * お気に入りの「全部消してから入れ直す」保存が途中で止まっても、消えたままにならない。
+     */
+    public synchronized void transaction(SqlWork work) throws SQLException {
+        ensureConnection();
+        boolean autoCommit = connection.getAutoCommit();
+        connection.setAutoCommit(false);
+        try {
+            work.run();
+            connection.commit();
+        } catch(SQLException | RuntimeException e) {
+            try { connection.rollback(); } catch(SQLException ignored) { }
+            throw e;
+        } finally {
+            try { connection.setAutoCommit(autoCommit); } catch(SQLException ignored) { }
+        }
     }
 
     private void ensureConnection() throws SQLException {
@@ -99,6 +134,6 @@ public class DataService {
         if(!reconnect()) throw new SQLException("Failed to reconnect to the " + type + " database.");
     }
 
-    public void close() { try { if(connection != null && !connection.isClosed()) connection.close(); } catch(SQLException ignored) { } }
+    public synchronized void close() { try { if(connection != null && !connection.isClosed()) connection.close(); } catch(SQLException ignored) { } }
 
 }

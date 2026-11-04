@@ -1,7 +1,9 @@
 package dev.geco.gmusic.object;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class GPlaySettings {
 
@@ -15,7 +17,10 @@ public class GPlaySettings {
 	private boolean toggleMode;
 	private long range;
 	private String currentSong;
+	// 再生スレッド（Timer）からも読まれるため、書き換えに強い CopyOnWriteArrayList を使う
 	private List<GSong> favorites;
+	// 曲ファイルが一時的に無い・名前が変わった等で解決できなかったお気に入り。保存時に消さずに残す
+	private final List<String> unresolvedFavoriteIds = new CopyOnWriteArrayList<>();
 	private boolean speakerMode;
 	private long speakerRange;
 	private long uniformRadius;
@@ -49,7 +54,7 @@ public class GPlaySettings {
 		this.toggleMode = toggleMode;
 		this.range = range;
 		this.currentSong = currentSong;
-		this.favorites = favorites;
+		this.favorites = new CopyOnWriteArrayList<>(favorites);
 		this.speakerMode = speakerMode;
 		this.speakerRange = speakerRange;
 		this.uniformRadius = 0;
@@ -99,11 +104,26 @@ public class GPlaySettings {
 
 	public List<GSong> getFavorites() { return favorites; }
 
-	public void setFavorites(List<GSong> favorites) { this.favorites = favorites; }
+	public void setFavorites(List<GSong> favorites) { this.favorites = new CopyOnWriteArrayList<>(favorites); }
 
-	public void addFavoriteSong(GSong song) { favorites.add(song); }
+	public List<String> getUnresolvedFavoriteIds() { return unresolvedFavoriteIds; }
 
-	public void removeFavoriteSong(GSong song) { favorites.remove(song); }
+	public void setUnresolvedFavoriteIds(List<String> ids) {
+		unresolvedFavoriteIds.clear();
+		for(String id : ids) if(id != null && !unresolvedFavoriteIds.contains(id)) unresolvedFavoriteIds.add(id);
+	}
+
+	/** 保存する順のお気に入り ID（解決できた曲 → 解決できなかった ID）。重複は除く。 */
+	public List<String> getFavoriteIdsForSave() {
+		List<String> ids = new ArrayList<>();
+		for(GSong song : favorites) if(song.getId() != null && !ids.contains(song.getId())) ids.add(song.getId());
+		for(String id : unresolvedFavoriteIds) if(!ids.contains(id)) ids.add(id);
+		return ids;
+	}
+
+	public void addFavoriteSong(GSong song) { if(!favorites.contains(song)) favorites.add(song); unresolvedFavoriteIds.remove(song.getId()); }
+
+	public void removeFavoriteSong(GSong song) { favorites.remove(song); unresolvedFavoriteIds.remove(song.getId()); }
 
 	public boolean isSpeakerMode() { return speakerMode; }
 

@@ -10,6 +10,7 @@ import dev.geco.gmusic.cmd.tab.GAMusicTabComplete;
 import dev.geco.gmusic.cmd.tab.GMusicTabComplete;
 import dev.geco.gmusic.event.JukeBoxEventHandler;
 import dev.geco.gmusic.event.PlayerEventHandler;
+import dev.geco.gmusic.link.PlaceholderAPILink;
 import dev.geco.gmusic.metric.BStatsMetric;
 import dev.geco.gmusic.service.ConfigService;
 import dev.geco.gmusic.service.DataService;
@@ -123,7 +124,7 @@ public class GMusicMain extends JavaPlugin {
 
         loadFeatures();
 
-        messageService = supportsPaperFeature && versionService.isNewerOrVersion(18, 2) ? new PaperMessageService(this) : new SpigotMessageService(this);
+        messageService = supportsPaperFeature && versionService.isNewerOrVersion(1, 18, 2) ? new PaperMessageService(this) : new SpigotMessageService(this);
     }
 
     public void onEnable() {
@@ -155,7 +156,10 @@ public class GMusicMain extends JavaPlugin {
         playSettingsService.createTables();
         jukeBoxService.createTables();
         jukeBoxService.loadJukeboxes(null);
+        // 再生スレッドはキャッシュだけを見るので、オンライン中のプレイヤーの設定を先に読んでおく（リロード対策）
+        for(org.bukkit.entity.Player player : Bukkit.getOnlinePlayers()) playSettingsService.getPlaySettings(player.getUniqueId());
         if(configService.R_ACTIVE) radioService.startRadio();
+        playService.startListenerRefresh();
     }
 
     public void reload(CommandSender sender) {
@@ -175,11 +179,13 @@ public class GMusicMain extends JavaPlugin {
     }
 
     private void unload() {
-        dataService.close();
+        playService.stopListenerRefresh();
         playService.stopSongs();
         radioService.stopRadio();
-        songService.unloadSongs();
+        // 保存してから DB を閉じる（以前は閉じた後に保存しており、裏で再接続して開きっぱなしになっていた）
         playSettingsService.savePlaySettings();
+        dataService.close();
+        songService.unloadSongs();
     }
 
     private void setupCommands() {
@@ -200,7 +206,7 @@ public class GMusicMain extends JavaPlugin {
     }
 
     private boolean versionCheck() {
-        if(versionService.isNewerOrVersion(18, 0) && versionService.isAvailable()) return true;
+        if(versionService.isNewerOrVersion(1, 18) && versionService.isAvailable()) return true;
         messageService.sendMessage(Bukkit.getConsoleSender(), "Plugin.plugin-version", "%Version%", versionService.getServerVersion());
         updateService.checkForUpdates();
         Bukkit.getPluginManager().disablePlugin(this);
@@ -227,7 +233,12 @@ public class GMusicMain extends JavaPlugin {
         } catch(ClassNotFoundException e) { supportsTaskFeature = false; }
     }
 
-    private void loadPluginDependencies() { }
+    private void loadPluginDependencies() {
+        try {
+            Class.forName("me.clip.placeholderapi.PlaceholderAPI");
+            new PlaceholderAPILink(this).register();
+        } catch(ClassNotFoundException ignored) { }
+    }
 
     private void printPluginLinks(CommandSender sender) { }
 

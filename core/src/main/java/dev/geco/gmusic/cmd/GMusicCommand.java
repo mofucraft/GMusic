@@ -4,6 +4,7 @@ import dev.geco.gmusic.GMusicMain;
 import dev.geco.gmusic.object.gui.GMusicGUI;
 import dev.geco.gmusic.object.GPlayMode;
 import dev.geco.gmusic.object.GPlaySettings;
+import dev.geco.gmusic.object.GPlayState;
 import dev.geco.gmusic.object.GSong;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -110,12 +111,45 @@ public class GMusicCommand implements CommandExecutor {
             }
             case "loop" -> {
                 GPlaySettings playSettings = gMusicMain.getPlaySettingsService().getPlaySettings(player.getUniqueId());
-                if (playSettings.getPlayMode() == GPlayMode.LOOP) {
-                    playSettings.setPlayMode(GPlayMode.DEFAULT);
-                    gMusicMain.getMessageService().sendMessage(sender, "Messages.command-gmusic-loop-off");
-                } else {
+                // /music loop [on|off]（引数なしは切り替え）
+                boolean enableLoop;
+                if (args.length >= 2) {
+                    enableLoop = switch (args[1].toLowerCase()) {
+                        case "on" -> true;
+                        case "off" -> false;
+                        default -> playSettings.getPlayMode() != GPlayMode.LOOP;
+                    };
+                } else enableLoop = playSettings.getPlayMode() != GPlayMode.LOOP;
+                if (enableLoop) {
                     playSettings.setPlayMode(GPlayMode.LOOP);
                     gMusicMain.getMessageService().sendMessage(sender, "Messages.command-gmusic-loop-on");
+                } else {
+                    playSettings.setPlayMode(GPlayMode.DEFAULT);
+                    gMusicMain.getMessageService().sendMessage(sender, "Messages.command-gmusic-loop-off");
+                }
+            }
+            case "favorite" -> {
+                // 再生中の曲をお気に入りに追加/削除
+                GPlayState playState = gMusicMain.getPlayService().getPlayState(player.getUniqueId());
+                if (playState == null) {
+                    gMusicMain.getMessageService().sendMessage(sender, "Messages.command-gmusic-playing-error");
+                    return true;
+                }
+                GSong song = playState.getSong();
+                GPlaySettings playSettings = gMusicMain.getPlaySettingsService().getPlaySettings(player.getUniqueId());
+                if (playSettings.getFavorites().contains(song)) {
+                    playSettings.removeFavoriteSong(song);
+                    gMusicMain.getPlaySettingsService().savePlaySettingsAsync(player.getUniqueId(), playSettings);
+                    gMusicMain.getMessageService().sendMessage(sender, "Messages.command-gmusic-favorite-remove", "%SongTitle%", song.getTitle());
+                } else {
+                    playSettings.addFavoriteSong(song);
+                    gMusicMain.getPlaySettingsService().savePlaySettingsAsync(player.getUniqueId(), playSettings);
+                    gMusicMain.getMessageService().sendMessage(sender, "Messages.command-gmusic-favorite-add", "%SongTitle%", song.getTitle());
+                }
+                GMusicGUI musicGUI = GMusicGUI.getMusicGUI(player.getUniqueId());
+                if (musicGUI != null) {
+                    musicGUI.setPage(1);
+                    musicGUI.setDefaultBar();
                 }
             }
             case "reload" -> {
@@ -124,11 +158,14 @@ public class GMusicCommand implements CommandExecutor {
                     return true;
                 }
                 gMusicMain.getSongService().loadSongs();
+                // 読み直した曲にお気に入りを付け替える（古い曲オブジェクトを持ち続けないように）
+                gMusicMain.getPlaySettingsService().refreshFavorites();
                 int songCount = gMusicMain.getSongService().getSongs().size();
                 gMusicMain.getMessageService().sendMessage(sender, "Messages.command-gmusic-reload-songs", "%Count%", String.valueOf(songCount));
             }
             case "speaker" -> {
-                if (!player.isOp()) {
+                // 以前は isOp() 固定で、LuckPerms などから権限を渡せなかった。既定は op のまま
+                if (!gMusicMain.getPermissionService().hasPermission(sender, "Speaker")) {
                     gMusicMain.getMessageService().sendMessage(sender, "Messages.command-permission-error");
                     return true;
                 }
