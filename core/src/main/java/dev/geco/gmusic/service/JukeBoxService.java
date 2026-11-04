@@ -29,9 +29,13 @@ public class JukeBoxService {
 
 	private final GMusicMain gMusicMain;
 	private final NamespacedKey jukeBoxKey;
-	private final HashMap<Block, UUID> jukeBoxBlocks = new HashMap<>();
-	private final HashMap<Block, UUID> radioJukeBoxBlocks = new HashMap<>();
-	private final HashMap<UUID, Long> emptyRangeStartTime = new HashMap<>();
+	// 再生スレッドからも読むため並行対応の Map
+	private final Map<Block, UUID> jukeBoxBlocks = new java.util.concurrent.ConcurrentHashMap<>();
+	private final Map<Block, UUID> radioJukeBoxBlocks = new java.util.concurrent.ConcurrentHashMap<>();
+	private final Map<UUID, Long> emptyRangeStartTime = new java.util.concurrent.ConcurrentHashMap<>();
+	// メインスレッドで数 tick ごとに計算した「範囲内のプレイヤー」（音用・パーティクル用）
+	private final Map<UUID, Map<Player, Double>> listenerCache = new java.util.concurrent.ConcurrentHashMap<>();
+	private final Map<UUID, Map<Player, Double>> particleListenerCache = new java.util.concurrent.ConcurrentHashMap<>();
 	private final Random random = new Random();
 
 	public JukeBoxService(GMusicMain gMusicMain) {
@@ -61,6 +65,28 @@ public class JukeBoxService {
 	}
 
 	public UUID getJukeBoxId(Block block) { return jukeBoxBlocks.get(block); }
+
+	/** ジュークボックスの位置。見つからなければ null（以前は NoSuchElementException で落ちていた）。 */
+	public Location getJukeBoxLocation(UUID uuid) {
+		for(Map.Entry<Block, UUID> entry : jukeBoxBlocks.entrySet()) if(entry.getValue().equals(uuid)) return entry.getKey().getLocation();
+		return null;
+	}
+
+	/** メインスレッドから呼ぶ。再生中のジュークボックスについて範囲内のプレイヤーを計算しておく。 */
+	public void refreshListeners() {
+		for(Map.Entry<Block, UUID> entry : jukeBoxBlocks.entrySet()) {
+			UUID uuid = entry.getValue();
+			GPlayState playState = gMusicMain.getPlayService().getPlayState(uuid);
+			if(playState == null || playState.isPaused()) { listenerCache.remove(uuid); particleListenerCache.remove(uuid); continue; }
+			GPlaySettings playSettings = gMusicMain.getPlaySettingsService().getCachedPlaySettings(uuid);
+			if(playSettings == null) continue;
+			Location location = entry.getKey().getLocation();
+			listenerCache.put(uuid, getPlayersInRange(location, playSettings.getRange()));
+			particleListenerCache.put(uuid, getPlayersInRange(location, gMusicMain.getConfigService().JUKEBOX_PARTICLE_RANGE));
+		}
+		listenerCache.keySet().removeIf(uuid -> !jukeBoxBlocks.containsValue(uuid));
+		particleListenerCache.keySet().removeIf(uuid -> !jukeBoxBlocks.containsValue(uuid));
+	}
 
 	public void loadJukeboxes(World world) {
 		jukeBoxBlocks.clear();
@@ -126,7 +152,8 @@ public class JukeBoxService {
 		if(uuid == null) return;
 		stopBoxSong(uuid);
 		gMusicMain.getPlaySettingsService().savePlaySettings(uuid, null);
-		GMusicGUI.getMusicGUI(uuid).close(true);
+		GMusicGUI musicGUI = GMusicGUI.getMusicGUI(uuid);
+		if(musicGUI != null) musicGUI.close(true);
 		radioJukeBoxBlocks.remove(block);
 		jukeBoxBlocks.remove(block);
 		try {
@@ -140,7 +167,7 @@ public class JukeBoxService {
 		try {
 			for(Player player : location.getWorld().getPlayers()) {
 				double distance = location.distance(player.getLocation());
-				GPlaySettings playSettings = gMusicMain.getPlaySettingsService().getPlaySettings(player.getUniqueId());
+				GPlaySettings playSettings = gMusicMain.getPlaySettingsService().getCachedPlaySettings(player.getUniqueId());
 				if(playSettings != null && distance <= range && !playSettings.isToggleMode()) playerRangeMap.put(player, distance);
 			}
 		} catch(Throwable ignored) { }
@@ -157,16 +184,19 @@ public class JukeBoxService {
 		GPlayState playState = gMusicMain.getPlayService().getPlayState(uuid);
 		if(playState != null) playState.getTimer().cancel();
 
-		Timer timer = new Timer();
+		Location jukeBoxLocation = getJukeBoxLocation(uuid);
+		if(jukeBoxLocation == null) return;
+
+		Timer timer = new Timer("GMusic-jukebox", true);
 		playState = new GPlayState(song, timer, playSettings.isReverseMode() ? song.getLength() + delay : -delay);
 		gMusicMain.getPlayService().setPlayState(uuid, playState);
 
 		playSettings.setCurrentSong(song.getId());
 
 		if(gMusicMain.getConfigService().A_SHOW_MESSAGES) {
-			for(Player player : gMusicMain.getJukeBoxService().getPlayersInRange(jukeBoxBlocks.entrySet().stream().filter(entry -> entry.getValue().equals(uuid)).findFirst().get().getKey().getLocation(), playSettings.getRange()).keySet()) {
-				GPlaySettings playerSettings = gMusicMain.getPlaySettingsService().getPlaySettings(player.getUniqueId());
-				// 「他人のスピーカーをミュート」している人にはアクションバーも出さない
+			for(Player player : playersNear(uuid, playSettings.getRange())) {
+				GPlaySettings playerSettings = gMusicMain.getPlaySettingsService().getCachedPlaySettings(player.getUniqueId());
+				// 「他人のスピーカーをミュート」している人にはアクションバーも出さない（1.3.0 から）
 				if(playerSettings != null && playerSettings.isMuteSpeakers()) continue;
 				gMusicMain.getMessageService().sendActionBarMessage(
 						player,
@@ -185,19 +215,28 @@ public class JukeBoxService {
 	private void playBoxTimer(UUID uuid, GSong song, Timer timer) {
 		GPlayState playState = gMusicMain.getPlayService().getPlayState(uuid);
 
-		Location boxLocation = jukeBoxBlocks.entrySet().stream().filter(entry -> entry.getValue().equals(uuid)).findFirst().get().getKey().getLocation();
+		Location boxLocation = getJukeBoxLocation(uuid);
+		if(boxLocation == null) return;
+		// 再生開始直後にも聞こえるよう、最初の一回はここで用意する（メインスレッドから呼ばれた場合）
+		if(Bukkit.isPrimaryThread()) {
+			listenerCache.put(uuid, getPlayersInRange(boxLocation, gMusicMain.getPlaySettingsService().getPlaySettings(uuid).getRange()));
+			particleListenerCache.put(uuid, getPlayersInRange(boxLocation, gMusicMain.getConfigService().JUKEBOX_PARTICLE_RANGE));
+		}
 
 		timer.scheduleAtFixedRate(new TimerTask() {
 			@Override
 			public void run() {
+				if (gMusicMain.getPlayService().getPlayState(uuid) != playState || !jukeBoxBlocks.containsValue(uuid)) { timer.cancel(); return; }
+
 				long z = playState.getTickPosition();
 
-				GPlaySettings playSettings = gMusicMain.getPlaySettingsService().getPlaySettings(uuid);
+				GPlaySettings playSettings = gMusicMain.getPlaySettingsService().getCachedPlaySettings(uuid);
 
 				if (playSettings != null) {
 					List<GNotePart> lnp = song.getContent().get(z);
 
-					HashMap<Player, Double> pl = getPlayersInRange(boxLocation, playSettings.getRange());
+					// 以前は 1ms ごとにワールドの全プレイヤーを 2 回走査していた。今はメインスレッドで計算済みのものを読む
+					Map<Player, Double> pl = listenerCache.getOrDefault(uuid, Map.of());
 
 					// プレイヤーが範囲内にいない場合は5分後に停止
 					if (pl.isEmpty()) {
@@ -210,8 +249,7 @@ public class JukeBoxService {
 								timer.cancel();
 								emptyRangeStartTime.remove(uuid);
 								gMusicMain.getPlayService().removePlayState(uuid);
-								GMusicGUI m = GMusicGUI.getMusicGUI(uuid);
-								if (m != null) m.setPauseResumeBar();
+								updatePauseResumeBar(uuid);
 								return;
 							}
 						}
@@ -221,7 +259,7 @@ public class JukeBoxService {
 					}
 
 					// パーティクル用に広い範囲のプレイヤーを取得
-					HashMap<Player, Double> particlePlayers = getPlayersInRange(boxLocation, gMusicMain.getConfigService().JUKEBOX_PARTICLE_RANGE);
+					Map<Player, Double> particlePlayers = particleListenerCache.getOrDefault(uuid, Map.of());
 
 					if (lnp != null && playSettings.getVolume() > 0) {
 						// ジュークボックスから常にパーティクルを出す（広い範囲のプレイヤーに表示）
@@ -233,12 +271,14 @@ public class JukeBoxService {
 						for (GNotePart np : lnp) {
 							for (Player P : pl.keySet()) {
 								// プレイヤーが「他人のスピーカーをミュート」している場合はスキップ
-								GPlaySettings playerSettings = gMusicMain.getPlaySettingsService().getPlaySettings(P.getUniqueId());
-								if (playerSettings != null && playerSettings.isMuteSpeakers()) continue;
+								GPlaySettings playerSettings = gMusicMain.getPlaySettingsService().getCachedPlaySettings(P.getUniqueId());
+								if (playerSettings == null || playerSettings.isMuteSpeakers() || !P.isOnline()) continue;
 
 								if (np.getSound() != null) {
-									// 距離に対して二乗で減衰させる
-									float t = (float) (pl.get(P) / playSettings.getRange());
+									Double distance = pl.get(P);
+									if (distance == null) continue;
+									// 距離に対して二乗で減衰させる（1.3.0 から）
+									float t = (float) (distance / playSettings.getRange());
 									float volume = (1.0f - t) * (1.0f - t) * playSettings.getFixedVolume() * np.getVolume();
 
 									Location location = np.getDistance() == 0 ? P.getLocation() : gMusicMain.getSteroNoteUtil().convertToStero(P.getLocation(), np.getDistance());
@@ -270,8 +310,7 @@ public class JukeBoxService {
 								playBoxSong(uuid, gMusicMain.getPlayService().getRandomSong(uuid), gMusicMain.getConfigService().PS_TIME_UNTIL_SHUFFLE);
 							else {
 								gMusicMain.getPlayService().removePlayState(uuid);
-								GMusicGUI m = GMusicGUI.getMusicGUI(uuid);
-								if (m != null) m.setPauseResumeBar();
+								updatePauseResumeBar(uuid);
 							}
 						}
 					} else {
@@ -280,6 +319,20 @@ public class JukeBoxService {
 				} else timer.cancel();
 			}
 		}, 0, 1);
+	}
+
+	/** メッセージ送信用。メインスレッドなら今の位置で数え、再生スレッドなら計算済みのものを使う。 */
+	private java.util.Set<Player> playersNear(UUID uuid, long range) {
+		if(!Bukkit.isPrimaryThread()) return listenerCache.getOrDefault(uuid, Map.of()).keySet();
+		Location location = getJukeBoxLocation(uuid);
+		return location == null ? java.util.Set.of() : getPlayersInRange(location, range).keySet();
+	}
+
+	private void updatePauseResumeBar(UUID uuid) {
+		gMusicMain.getTaskService().run(() -> {
+			GMusicGUI m = GMusicGUI.getMusicGUI(uuid);
+			if (m != null) m.setPauseResumeBar();
+		});
 	}
 
 	public GSong getNextSong(UUID uuid) {
@@ -300,9 +353,9 @@ public class JukeBoxService {
 		playSettings.setCurrentSong(null);
 
 		if(gMusicMain.getConfigService().A_SHOW_MESSAGES) {
-			for (Player player : gMusicMain.getJukeBoxService().getPlayersInRange(jukeBoxBlocks.entrySet().stream().filter(entry -> entry.getValue().equals(uuid)).findFirst().get().getKey().getLocation(), playSettings.getRange()).keySet()) {
-				GPlaySettings playerSettings = gMusicMain.getPlaySettingsService().getPlaySettings(player.getUniqueId());
-				// 「他人のスピーカーをミュート」している人にはアクションバーも出さない
+			for (Player player : gMusicMain.getJukeBoxService().playersNear(uuid, playSettings.getRange())) {
+				GPlaySettings playerSettings = gMusicMain.getPlaySettingsService().getCachedPlaySettings(player.getUniqueId());
+				// 「他人のスピーカーをミュート」している人にはアクションバーも出さない（1.3.0 から）
 				if(playerSettings != null && playerSettings.isMuteSpeakers()) continue;
 				gMusicMain.getMessageService().sendActionBarMessage(player, "Messages.actionbar-stop");
 			}
@@ -318,9 +371,9 @@ public class JukeBoxService {
 
 		GPlaySettings playSettings = gMusicMain.getPlaySettingsService().getPlaySettings(uuid);
 		if(gMusicMain.getConfigService().A_SHOW_MESSAGES) {
-			for (Player player : gMusicMain.getJukeBoxService().getPlayersInRange(jukeBoxBlocks.entrySet().stream().filter(entry -> entry.getValue().equals(uuid)).findFirst().get().getKey().getLocation(), playSettings.getRange()).keySet()) {
-				GPlaySettings playerSettings = gMusicMain.getPlaySettingsService().getPlaySettings(player.getUniqueId());
-				// 「他人のスピーカーをミュート」している人にはアクションバーも出さない
+			for (Player player : gMusicMain.getJukeBoxService().playersNear(uuid, playSettings.getRange())) {
+				GPlaySettings playerSettings = gMusicMain.getPlaySettingsService().getCachedPlaySettings(player.getUniqueId());
+				// 「他人のスピーカーをミュート」している人にはアクションバーも出さない（1.3.0 から）
 				if(playerSettings != null && playerSettings.isMuteSpeakers()) continue;
 				gMusicMain.getMessageService().sendActionBarMessage(player, "Messages.actionbar-pause");
 			}
@@ -331,14 +384,14 @@ public class JukeBoxService {
 		GPlayState playState = gMusicMain.getPlayService().getPlayState(uuid);
 		if(playState == null) return;
 
-		playState.setTimer(new Timer());
+		playState.setTimer(new Timer("GMusic-jukebox", true));
 		playState.setPaused(false);
 
 		GPlaySettings playSettings = gMusicMain.getPlaySettingsService().getPlaySettings(uuid);
 		if(gMusicMain.getConfigService().A_SHOW_MESSAGES) {
-			for (Player player : gMusicMain.getJukeBoxService().getPlayersInRange(jukeBoxBlocks.entrySet().stream().filter(entry -> entry.getValue().equals(uuid)).findFirst().get().getKey().getLocation(), playSettings.getRange()).keySet()) {
-				GPlaySettings playerSettings = gMusicMain.getPlaySettingsService().getPlaySettings(player.getUniqueId());
-				// 「他人のスピーカーをミュート」している人にはアクションバーも出さない
+			for (Player player : gMusicMain.getJukeBoxService().playersNear(uuid, playSettings.getRange())) {
+				GPlaySettings playerSettings = gMusicMain.getPlaySettingsService().getCachedPlaySettings(player.getUniqueId());
+				// 「他人のスピーカーをミュート」している人にはアクションバーも出さない（1.3.0 から）
 				if(playerSettings != null && playerSettings.isMuteSpeakers()) continue;
 				gMusicMain.getMessageService().sendActionBarMessage(player, "Messages.actionbar-resume");
 			}

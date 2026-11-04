@@ -43,20 +43,35 @@ public class PlaceholderAPILink extends PlaceholderExpansion {
     @Override
     public boolean persist() { return true; }
 
+    /**
+     * オンラインの人はキャッシュ（無ければ読み込み）、オフラインの人はキャッシュにある時だけ返す。
+     * 1.3.0 ではオフラインの人の設定も DB から読んでキャッシュに入れたままにしており、
+     * 呼ばれるたびにメモリが増え、PlaceholderAPI のスレッドで DB を読んでいた。
+     */
+    private GPlaySettings getSettings(OfflinePlayer offlinePlayer) {
+        GPlaySettings cached = gMusicMain.getPlaySettingsService().getCachedPlaySettings(offlinePlayer.getUniqueId());
+        if(cached != null) return cached;
+        if(offlinePlayer.isOnline() && org.bukkit.Bukkit.isPrimaryThread()) return gMusicMain.getPlaySettingsService().getPlaySettings(offlinePlayer.getUniqueId());
+        return null;
+    }
+
     @Override
     public String onRequest(OfflinePlayer offlinePlayer, @NotNull String placeholder) {
         if(offlinePlayer == null) return null;
         switch(placeholder.toLowerCase()) {
             case "option_volume": {
-                GPlaySettings playSettings = gMusicMain.getPlaySettingsService().getPlaySettings(offlinePlayer.getUniqueId());
+                GPlaySettings playSettings = getSettings(offlinePlayer);
+                if(playSettings == null) return "";
                 return String.valueOf(playSettings.getVolume());
             }
             case "option_join": {
-                GPlaySettings playSettings = gMusicMain.getPlaySettingsService().getPlaySettings(offlinePlayer.getUniqueId());
+                GPlaySettings playSettings = getSettings(offlinePlayer);
+                if(playSettings == null) return "";
                 return String.valueOf(playSettings.isPlayOnJoin());
             }
             case "option_playmode": {
-                GPlaySettings playSettings = gMusicMain.getPlaySettingsService().getPlaySettings(offlinePlayer.getUniqueId());
+                GPlaySettings playSettings = getSettings(offlinePlayer);
+                if(playSettings == null) return "";
                 GPlayMode mode = playSettings.getPlayMode();
                 return switch(mode) {
                     case DEFAULT -> "once";
@@ -67,7 +82,8 @@ public class PlaceholderAPILink extends PlaceholderExpansion {
                 };
             }
             case "option_toggle": {
-                GPlaySettings playSettings = gMusicMain.getPlaySettingsService().getPlaySettings(offlinePlayer.getUniqueId());
+                GPlaySettings playSettings = getSettings(offlinePlayer);
+                if(playSettings == null) return "";
                 return String.valueOf(playSettings.isToggleMode());
             }
             case "playing": {

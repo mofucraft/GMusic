@@ -43,7 +43,10 @@ public class JukeBoxEventHandler implements Listener {
 
 		if(!gMusicMain.getPermissionService().hasPermission(player, "AMusic.UseJukeBox", "AMusic.*")) return;
 
-		if(!player.isSneaking()) player.openInventory(GMusicGUI.getMusicGUI(uuid).getInventory());
+		if(player.isSneaking()) return;
+		GMusicGUI musicGUI = GMusicGUI.getMusicGUI(uuid);
+		if(musicGUI == null) musicGUI = new GMusicGUI(uuid, GMusicGUI.MenuType.JUKEBOX);
+		player.openInventory(musicGUI.getInventory());
 	}
 
 	@EventHandler (ignoreCancelled = true, priority = EventPriority.HIGHEST)
@@ -57,25 +60,26 @@ public class JukeBoxEventHandler implements Listener {
 
 	@EventHandler (ignoreCancelled = true, priority = EventPriority.HIGHEST)
 	public void blockBreakEvent(BlockBreakEvent event) {
-		handleBlockBreak(event.getBlock());
+		// upstream 4e184e6: クリエイティブで壊したときはアイテムを落とさない
+		handleBlockBreak(event.getBlock(), event.getPlayer().getGameMode() != org.bukkit.GameMode.CREATIVE);
 	}
 
 	@EventHandler (ignoreCancelled = true, priority = EventPriority.HIGHEST)
 	public void blockExplodeEvent(BlockExplodeEvent event) {
-		for(Block block : event.blockList()) handleBlockBreak(block);
+		for(Block block : event.blockList()) handleBlockBreak(block, true);
 	}
 
 	@EventHandler (ignoreCancelled = true, priority = EventPriority.HIGHEST)
 	public void entityExplodeEvent(EntityExplodeEvent event) {
-		for(Block block : event.blockList()) handleBlockBreak(block);
+		for(Block block : event.blockList()) handleBlockBreak(block, true);
 	}
 
-	private void handleBlockBreak(Block block) {
+	private void handleBlockBreak(Block block, boolean dropJukebox) {
 		if(block.getType() != Material.JUKEBOX) return;
 		if(gMusicMain.getJukeBoxService().getJukeBoxId(block) == null) return;
 		gMusicMain.getJukeBoxService().removeJukebox(block);
 		block.setType(Material.AIR);
-		block.getWorld().dropItemNaturally(block.getLocation().add(0.5, 0, 0.5), gMusicMain.getJukeBoxService().createJukeBoxItem());
+		if(dropJukebox) block.getWorld().dropItemNaturally(block.getLocation().add(0.5, 0, 0.5), gMusicMain.getJukeBoxService().createJukeBoxItem());
 	}
 
 	@EventHandler(priority = EventPriority.MONITOR)

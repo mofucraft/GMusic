@@ -156,7 +156,10 @@ public class GMusicMain extends JavaPlugin {
         playSettingsService.createTables();
         jukeBoxService.createTables();
         jukeBoxService.loadJukeboxes(null);
+        // 再生スレッドはキャッシュだけを見るので、オンライン中のプレイヤーの設定を先に読んでおく（リロード対策）
+        for(org.bukkit.entity.Player player : Bukkit.getOnlinePlayers()) playSettingsService.getPlaySettings(player.getUniqueId());
         if(configService.R_ACTIVE) radioService.startRadio();
+        playService.startListenerRefresh();
     }
 
     public void reload(CommandSender sender) {
@@ -176,11 +179,13 @@ public class GMusicMain extends JavaPlugin {
     }
 
     private void unload() {
-        dataService.close();
+        playService.stopListenerRefresh();
         playService.stopSongs();
         radioService.stopRadio();
-        songService.unloadSongs();
+        // 保存してから DB を閉じる（以前は閉じた後に保存しており、裏で再接続して開きっぱなしになっていた）
         playSettingsService.savePlaySettings();
+        dataService.close();
+        songService.unloadSongs();
     }
 
     private void setupCommands() {

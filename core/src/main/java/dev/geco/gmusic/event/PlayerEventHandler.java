@@ -55,8 +55,8 @@ public class PlayerEventHandler implements Listener {
 
         gMusicMain.getRadioService().removeRadioPlayer(player);
 
-        if(gMusicMain.getConfigService().PS_SAVE_ON_QUIT) gMusicMain.getPlaySettingsService().savePlaySettings(player.getUniqueId(), gMusicMain.getPlaySettingsService().getPlaySettings(player.getUniqueId()));
-        gMusicMain.getPlaySettingsService().removePlaySettingsCache(player.getUniqueId());
+        // DB 書き込みは非同期で行い、終わってからキャッシュを外す（メインスレッドで同期保存すると MSPT が跳ねる）
+        gMusicMain.getPlaySettingsService().savePlaySettingsAndUncacheAsync(player.getUniqueId());
     }
 
 }

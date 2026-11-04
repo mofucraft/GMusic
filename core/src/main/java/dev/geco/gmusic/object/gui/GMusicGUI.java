@@ -39,7 +39,8 @@ public class GMusicGUI {
 
 	private final GMusicMain gMusicMain = GMusicMain.getInstance();
 	private final HashMap<Integer, GSong> pageSongs = new HashMap<>();
-	private static final HashMap<UUID, GMusicGUI> musicGUIS = new HashMap<>();
+	// 再生スレッドからも参照されるため ConcurrentHashMap
+	private static final java.util.Map<UUID, GMusicGUI> musicGUIS = new java.util.concurrent.ConcurrentHashMap<>();
 	private static final int VOLUME_STEPS = 10;
 	private static final int SHIFT_VOLUME_STEPS = 1;
 	private static final long RANGE_STEPS = 1;
@@ -290,7 +291,7 @@ public class GMusicGUI {
 									}
 								}
 								// データベースに保存
-								gMusicMain.getPlaySettingsService().savePlaySettings(uuid, playSettings);
+								gMusicMain.getPlaySettingsService().savePlaySettingsAsync(uuid, playSettings);
 								// 曲リストを更新（お気に入りハートの表示更新のため）
 								setPage(page);
 								setDefaultBar();
@@ -349,7 +350,7 @@ public class GMusicGUI {
 										clickPlayer.playSound(clickPlayer.getLocation(), org.bukkit.Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 0.5f);
 									}
 								}
-								gMusicMain.getPlaySettingsService().savePlaySettings(uuid, playSettings);
+								gMusicMain.getPlaySettingsService().savePlaySettingsAsync(uuid, playSettings);
 								setPage(page);
 								return;
 							}
@@ -374,7 +375,7 @@ public class GMusicGUI {
 									target.playSound(target.getLocation(), org.bukkit.Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 0.5f);
 								}
 								// データベースに保存
-								gMusicMain.getPlaySettingsService().savePlaySettings(uuid, playSettings);
+								gMusicMain.getPlaySettingsService().savePlaySettingsAsync(uuid, playSettings);
 								setPage(page);
 								return;
 							}

@@ -25,6 +25,7 @@ public class RadioService {
 	private final GMusicMain gMusicMain;
 	private final Random random = new Random();
 	private UUID radioUUID;
+	// GUI（メイン）と再生スレッドの両方から触るので並行対応の Set（1.3.0 から）
 	private final Set<Player> radioPlayers = new CopyOnWriteArraySet<>();
 
 	public RadioService(GMusicMain gMusicMain) {
@@ -52,7 +53,7 @@ public class RadioService {
 		GPlayState playState = gMusicMain.getPlayService().getPlayState(radioUUID);
 		if(playState != null) playState.getTimer().cancel();
 
-		Timer timer = new Timer();
+		Timer timer = new Timer("GMusic-radio", true);
 		playState = new GPlayState(song, timer, playSettings.isReverseMode() ? song.getLength() + delay : -delay);
 		gMusicMain.getPlayService().setPlayState(radioUUID, playState);
 
@@ -83,25 +84,28 @@ public class RadioService {
 			@Override
 			public void run() {
 				try {
+					if(gMusicMain.getPlayService().getPlayState(radioUUID) != playState) { timer.cancel(); return; }
+
 					long position = playState.getTickPosition();
 
 					List<GNotePart> noteParts = song.getContent().get(position);
 
 					List<Player> players = new ArrayList<>(radioPlayers);
+					players.removeIf(p -> !p.isOnline());
 
 					if(noteParts != null && playSettings.getVolume() > 0 && !players.isEmpty()) {
 						for(Player player : players) {
-							if(player == null) continue;
-							GPlaySettings playerPlaySettings = gMusicMain.getPlaySettingsService().getPlaySettings(player.getUniqueId());
-							if(!playerPlaySettings.isShowingParticles()) continue;
+							// 再生スレッドから DB を読まないよう、キャッシュだけを見る
+							GPlaySettings playerPlaySettings = gMusicMain.getPlaySettingsService().getCachedPlaySettings(player.getUniqueId());
+							if(playerPlaySettings == null || !playerPlaySettings.isShowingParticles()) continue;
 							player.spawnParticle(Particle.NOTE, player.getEyeLocation().clone().add(random.nextDouble() - 0.5, 0.3, random.nextDouble() - 0.5), 0, random.nextDouble(), random.nextDouble(), random.nextDouble(), 1);
 						}
 
 						for(GNotePart notePart : noteParts) {
 							for(Player player : players) {
-								if(player == null) continue;
 								if(notePart.getSound() != null) {
-									GPlaySettings playerPlaySettings = gMusicMain.getPlaySettingsService().getPlaySettings(player.getUniqueId());
+									GPlaySettings playerPlaySettings = gMusicMain.getPlaySettingsService().getCachedPlaySettings(player.getUniqueId());
+									if(playerPlaySettings == null) continue;
 									float volume = playerPlaySettings.getFixedVolume() * notePart.getVolume();
 
 									Location location = notePart.getDistance() == 0 ? player.getLocation() : gMusicMain.getSteroNoteUtil().convertToStero(player.getLocation(), notePart.getDistance());
@@ -124,9 +128,9 @@ public class RadioService {
 						playRadioSong(gMusicMain.getPlayService().getShuffleSong(radioUUID, song), gMusicMain.getConfigService().PS_TIME_UNTIL_SHUFFLE);
 					} else {
 						playState.setTickPosition(playSettings.isReverseMode() ? position - 1 : position + 1);
-						if(gMusicMain.getConfigService().A_SHOW_WHILE_PLAYING) {
+						// 以前は 1ms ごとに送っていた。1 秒に 1 回にする
+						if(gMusicMain.getConfigService().A_SHOW_WHILE_PLAYING && PlayService.isActionBarTick(position)) {
 							for(Player radioPlayer : players) {
-								if(radioPlayer == null) continue;
 								gMusicMain.getMessageService().sendActionBarMessage(
 										radioPlayer,
 										"Messages.actionbar-play",
