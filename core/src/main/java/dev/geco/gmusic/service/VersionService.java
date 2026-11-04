@@ -12,16 +12,16 @@ public class VersionService {
 
     private final String LATEST_VERSION = "v1_21_6";
     private final HashMap<String, String> VERSION_MAPPING = new HashMap<>() {{
-        VERSION_MAPPING.put("v1_18_1", "v1_18");
-        VERSION_MAPPING.put("v1_19_2", "v1_19_1");
-        VERSION_MAPPING.put("v1_20_1", "v1_20");
-        VERSION_MAPPING.put("v1_20_4", "v1_20_3");
-        VERSION_MAPPING.put("v1_20_6", "v1_20_5");
-        VERSION_MAPPING.put("v1_21_1", "v1_21");
-        VERSION_MAPPING.put("v1_21_3", "v1_21_2");
-        VERSION_MAPPING.put("v26_1", "v1_21_6");
-        VERSION_MAPPING.put("v26_1_1", "v1_21_6");
-        VERSION_MAPPING.put("v26_1_2", "v1_21_6");
+        put("v1_18_1", "v1_18");
+        put("v1_19_2", "v1_19_1");
+        put("v1_20_1", "v1_20");
+        put("v1_20_4", "v1_20_3");
+        put("v1_20_6", "v1_20_5");
+        put("v1_21_1", "v1_21");
+        put("v1_21_3", "v1_21_2");
+        put("v26_1", "v1_21_6");
+        put("v26_1_1", "v1_21_6");
+        put("v26_1_2", "v1_21_6");
     }};
     private final GMusicMain gMusicMain;
     private final String serverVersion;

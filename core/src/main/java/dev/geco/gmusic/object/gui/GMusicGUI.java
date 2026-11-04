@@ -257,13 +257,14 @@ public class GMusicGUI {
 								if(target != null) target.openInventory(inventory);
 							}, 1);
 							return true;
-						}, ItemMeta::getDisplayName);
-						if(inputGUI == null) return;
-						ItemStack nameItem = new ItemStack(Material.PAPER);
-						ItemMeta nameItemMeta = nameItem.getItemMeta();
-						nameItemMeta.setDisplayName(searchKey != null ? searchKey : "");
-						nameItem.setItemMeta(nameItemMeta);
-						if(clicker instanceof Player clickPlayer) inputGUI.open(clickPlayer, gMusicMain.getMessageService().getMessage("MusicGUI.music-search-menu-title"), nameItem);
+						}, meta -> meta.getDisplayName());
+						if(inputGUI != null) {
+							ItemStack nameItem = new ItemStack(Material.PAPER);
+							ItemMeta nameItemMeta = nameItem.getItemMeta();
+							nameItemMeta.setDisplayName(searchKey != null ? searchKey : "");
+							nameItem.setItemMeta(nameItemMeta);
+							if(clicker instanceof Player clickPlayer) inputGUI.open(clickPlayer, gMusicMain.getMessageService().getMessage("MusicGUI.music-search-menu-title"), nameItem);
+						}
 					}
 					case 51 -> {
 						// お気に入り追加/削除
