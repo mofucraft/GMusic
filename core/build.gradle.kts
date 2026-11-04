@@ -4,6 +4,7 @@ plugins {
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.6-R0.1-SNAPSHOT")
+    compileOnly("me.clip:placeholderapi:2.12.2")
 }
 
 java {

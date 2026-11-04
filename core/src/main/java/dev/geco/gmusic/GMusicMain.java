@@ -10,6 +10,7 @@ import dev.geco.gmusic.cmd.tab.GAMusicTabComplete;
 import dev.geco.gmusic.cmd.tab.GMusicTabComplete;
 import dev.geco.gmusic.event.JukeBoxEventHandler;
 import dev.geco.gmusic.event.PlayerEventHandler;
+import dev.geco.gmusic.link.PlaceholderAPILink;
 import dev.geco.gmusic.metric.BStatsMetric;
 import dev.geco.gmusic.service.ConfigService;
 import dev.geco.gmusic.service.DataService;
@@ -123,7 +124,7 @@ public class GMusicMain extends JavaPlugin {
 
         loadFeatures();
 
-        messageService = supportsPaperFeature && versionService.isNewerOrVersion(18, 2) ? new PaperMessageService(this) : new SpigotMessageService(this);
+        messageService = supportsPaperFeature && versionService.isNewerOrVersion(1, 18, 2) ? new PaperMessageService(this) : new SpigotMessageService(this);
     }
 
     public void onEnable() {
@@ -200,7 +201,7 @@ public class GMusicMain extends JavaPlugin {
     }
 
     private boolean versionCheck() {
-        if(versionService.isNewerOrVersion(18, 0) && versionService.isAvailable()) return true;
+        if(versionService.isNewerOrVersion(1, 18) && versionService.isAvailable()) return true;
         messageService.sendMessage(Bukkit.getConsoleSender(), "Plugin.plugin-version", "%Version%", versionService.getServerVersion());
         updateService.checkForUpdates();
         Bukkit.getPluginManager().disablePlugin(this);
@@ -227,7 +228,12 @@ public class GMusicMain extends JavaPlugin {
         } catch(ClassNotFoundException e) { supportsTaskFeature = false; }
     }
 
-    private void loadPluginDependencies() { }
+    private void loadPluginDependencies() {
+        try {
+            Class.forName("me.clip.placeholderapi.PlaceholderAPI");
+            new PlaceholderAPILink(this).register();
+        } catch(ClassNotFoundException ignored) { }
+    }
 
     private void printPluginLinks(CommandSender sender) { }
 

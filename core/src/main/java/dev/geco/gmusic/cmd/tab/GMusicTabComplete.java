@@ -36,6 +36,7 @@ public class GMusicTabComplete implements TabCompleter {
                 complete.add("skip");
                 complete.add("toggle");
                 complete.add("loop");
+                complete.add("favorite");
             }
             if(gMusicMain.getPermissionService().hasPermission(sender, "Reload")) {
                 complete.add("reload");
@@ -57,6 +58,10 @@ public class GMusicTabComplete implements TabCompleter {
                 complete.add("on");
                 complete.add("off");
                 complete.add("range");
+            }
+            if(gMusicMain.getPermissionService().hasPermission(sender, "Music") && args[0].equalsIgnoreCase("loop")) {
+                complete.add("on");
+                complete.add("off");
             }
             if(!args[args.length - 1].isEmpty()) {
                 for(String entry : complete) if(entry.toLowerCase().startsWith(args[args.length - 1].toLowerCase())) completeStarted.add(entry);

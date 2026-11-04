@@ -11,7 +11,7 @@ import java.util.logging.Level;
 public class VersionService {
 
     private final String LATEST_VERSION = "v1_21_6";
-    private final HashMap<String, String> VERSION_MAPPING = new HashMap<>(); {
+    private final HashMap<String, String> VERSION_MAPPING = new HashMap<>() {{
         VERSION_MAPPING.put("v1_18_1", "v1_18");
         VERSION_MAPPING.put("v1_19_2", "v1_19_1");
         VERSION_MAPPING.put("v1_20_1", "v1_20");
@@ -19,21 +19,49 @@ public class VersionService {
         VERSION_MAPPING.put("v1_20_6", "v1_20_5");
         VERSION_MAPPING.put("v1_21_1", "v1_21");
         VERSION_MAPPING.put("v1_21_3", "v1_21_2");
-    }
+        VERSION_MAPPING.put("v26_1", "v1_21_6");
+        VERSION_MAPPING.put("v26_1_1", "v1_21_6");
+        VERSION_MAPPING.put("v26_1_2", "v1_21_6");
+    }};
     private final GMusicMain gMusicMain;
     private final String serverVersion;
+    private final int[] serverVersionParts;
     private String packagePath;
     private boolean available;
 
     public VersionService(GMusicMain gMusicMain) {
         this.gMusicMain = gMusicMain;
-        String rawServerVersion = Bukkit.getServer().getBukkitVersion();
-        serverVersion = rawServerVersion.substring(0, rawServerVersion.indexOf('-'));
-        packagePath = gMusicMain.getClass().getPackage().getName() + ".mcv." + getPackageVersion();
+        serverVersion = extractServerVersion();
+        int[] parts;
+        try {
+            parts = Arrays.stream(serverVersion.split("\\.")).mapToInt(Integer::parseInt).toArray();
+        } catch(NumberFormatException e) { parts = new int[]{ 1, 21, 6 }; }
+        serverVersionParts = parts;
+        String packageVersion = "v" + serverVersion.replace(".", "_");
+        packagePath = gMusicMain.getClass().getPackage().getName() + ".mcv." + VERSION_MAPPING.getOrDefault(packageVersion, packageVersion);
         available = hasPackageClass("object.gui.GMusicInputGUI");
         if(available) return;
         packagePath = gMusicMain.getClass().getPackage().getName() + ".mcv." + LATEST_VERSION;
         available = hasPackageClass("object.gui.GMusicInputGUI");
+    }
+
+    // 26.x 以降は getBukkitVersion() の形が変わるので、getVersion() の "(MC: x.y.z)" を先に読む
+    private String extractServerVersion() {
+        try {
+            String version = Bukkit.getServer().getVersion();
+            int start = version.indexOf("MC:");
+            if(start != -1) {
+                start += 4;
+                int end = version.indexOf(')', start);
+                if(end != -1) version = version.substring(start, end);
+            }
+            return version.split(" ")[0].trim();
+        } catch(Throwable e) {
+            try {
+                String rawServerVersion = Bukkit.getServer().getBukkitVersion();
+                return rawServerVersion.substring(0, rawServerVersion.indexOf('-'));
+            } catch(Throwable ignored) { return "1.21.6"; }
+        }
     }
 
     public String getServerVersion() { return serverVersion; }
@@ -42,10 +70,16 @@ public class VersionService {
 
     public boolean isAvailable() { return available; }
 
-    public boolean isNewerOrVersion(int version, int subVersion) {
-        String[] serverVersionSplit = serverVersion.split("\\.");
-        if(Integer.parseInt(serverVersionSplit[1]) > version) return true;
-        return Integer.parseInt(serverVersionSplit[1]) == version && (serverVersionSplit.length > 2 ? Integer.parseInt(serverVersionSplit[2]) >= subVersion : subVersion == 0);
+    // 例: isNewerOrVersion(1, 18, 2) は 1.18.2 以上なら true。26.1 も 1.21.x より新しいと判定できる
+    public boolean isNewerOrVersion(int... version) {
+        int length = Math.max(serverVersionParts.length, version.length);
+        for(int i = 0; i < length; i++) {
+            int server = i < serverVersionParts.length ? serverVersionParts[i] : 0;
+            int target = i < version.length ? version[i] : 0;
+            if(server > target) return true;
+            if(server < target) return false;
+        }
+        return true;
     }
 
     public Object getPackageObjectInstance(String className, Object... parameters) {
@@ -73,11 +107,6 @@ public class VersionService {
             return true;
         } catch(Throwable ignored) { }
         return false;
-    }
-
-    private String getPackageVersion() {
-        String packageVersion = "v" + serverVersion.replace(".", "_");
-        return VERSION_MAPPING.getOrDefault(packageVersion, packageVersion);
     }
 
 }

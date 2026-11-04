@@ -18,7 +18,7 @@ public enum GPlayListMode {
 
     public static GPlayListMode byId(int id) {
         for(GPlayListMode playListMode : values()) if(playListMode.getId() == id) return playListMode;
-        return null;
+        return DEFAULT;
     }
 
 }
