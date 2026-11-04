@@ -1,0 +1,37 @@
+# 押し込み・PR のたびにビルドと試験を回し、できた jar を成果物として残す（公開はしない）
+name: build
+
+on:
+  push:
+    branches: [ main, "claude/**" ]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      # 各 mcv は自分の版の JDK（17〜24）を toolchain で取りに行く。Gradle 自体は 21 で動かす
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build and test
+        run: ./gradlew build --no-configuration-cache
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: GMusic
+          path: |
+            build/libs/*.jar
+            core/build/reports/tests/
+          if-no-files-found: warn
