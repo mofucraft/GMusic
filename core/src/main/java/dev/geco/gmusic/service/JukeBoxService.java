@@ -23,15 +23,18 @@ import org.bukkit.persistence.PersistentDataType;
 import java.sql.ResultSet;
 import java.util.*;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 
 public class JukeBoxService {
 
 	private final GMusicMain gMusicMain;
 	private final NamespacedKey jukeBoxKey;
-	private final HashMap<Block, UUID> jukeBoxBlocks = new HashMap<>();
-	private final HashMap<Block, UUID> radioJukeBoxBlocks = new HashMap<>();
-	private final HashMap<UUID, Long> emptyRangeStartTime = new HashMap<>();
+	// どれも Timer の別スレッドからも読むので、壊れない表にする
+	private static final long LISTENER_REFRESH_MS = 200;
+	private final Map<Block, UUID> jukeBoxBlocks = new ConcurrentHashMap<>();
+	private final Map<Block, UUID> radioJukeBoxBlocks = new ConcurrentHashMap<>();
+	private final Map<UUID, Long> emptyRangeStartTime = new ConcurrentHashMap<>();
 	private final Random random = new Random();
 
 	public JukeBoxService(GMusicMain gMusicMain) {
@@ -60,7 +63,12 @@ public class JukeBoxService {
 		return itemStack;
 	}
 
-	public UUID getJukeBoxId(Block block) { return jukeBoxBlocks.get(block); }
+	public UUID getJukeBoxId(Block block) { return block != null ? jukeBoxBlocks.get(block) : null; }
+
+	private Location getJukeBoxLocation(UUID uuid) {
+		for(Map.Entry<Block, UUID> entry : jukeBoxBlocks.entrySet()) if(entry.getValue().equals(uuid)) return entry.getKey().getLocation();
+		return null;
+	}
 
 	public void loadJukeboxes(World world) {
 		jukeBoxBlocks.clear();
@@ -122,11 +130,12 @@ public class JukeBoxService {
 	}
 
 	public void removeJukebox(Block block) {
-		UUID uuid = jukeBoxBlocks.get(block);
+		UUID uuid = getJukeBoxId(block);
 		if(uuid == null) return;
 		stopBoxSong(uuid);
 		gMusicMain.getPlaySettingsService().savePlaySettings(uuid, null);
-		GMusicGUI.getMusicGUI(uuid).close(true);
+		GMusicGUI musicGUI = GMusicGUI.getMusicGUI(uuid);
+		if(musicGUI != null) musicGUI.close(true);
 		radioJukeBoxBlocks.remove(block);
 		jukeBoxBlocks.remove(block);
 		try {
@@ -136,9 +145,11 @@ public class JukeBoxService {
 
 	public HashMap<Player, Double> getPlayersInRange(Location location, long range) {
 		HashMap<Player, Double> playerRangeMap = new HashMap<>();
+		if(location == null || location.getWorld() == null) return playerRangeMap;
 		if(gMusicMain.getConfigService().WORLDBLACKLIST.contains(location.getWorld().getName())) return playerRangeMap;
 		try {
 			for(Player player : location.getWorld().getPlayers()) {
+				if(!player.isOnline()) continue;
 				double distance = location.distance(player.getLocation());
 				GPlaySettings playSettings = gMusicMain.getPlaySettingsService().getPlaySettings(player.getUniqueId());
 				if(playSettings != null && distance <= range && !playSettings.isToggleMode()) playerRangeMap.put(player, distance);
@@ -164,7 +175,7 @@ public class JukeBoxService {
 		playSettings.setCurrentSong(song.getId());
 
 		if(gMusicMain.getConfigService().A_SHOW_MESSAGES) {
-			for(Player player : gMusicMain.getJukeBoxService().getPlayersInRange(jukeBoxBlocks.entrySet().stream().filter(entry -> entry.getValue().equals(uuid)).findFirst().get().getKey().getLocation(), playSettings.getRange()).keySet()) {
+			for(Player player : gMusicMain.getJukeBoxService().getPlayersInRange(getJukeBoxLocation(uuid), playSettings.getRange()).keySet()) {
 				GPlaySettings playerSettings = gMusicMain.getPlaySettingsService().getPlaySettings(player.getUniqueId());
 				if(playerSettings != null && playerSettings.isMuteSpeakers()) continue;
 				gMusicMain.getMessageService().sendActionBarMessage(
@@ -184,11 +195,27 @@ public class JukeBoxService {
 	private void playBoxTimer(UUID uuid, GSong song, Timer timer) {
 		GPlayState playState = gMusicMain.getPlayService().getPlayState(uuid);
 
-		Location boxLocation = jukeBoxBlocks.entrySet().stream().filter(entry -> entry.getValue().equals(uuid)).findFirst().get().getKey().getLocation();
+		Location boxLocation = getJukeBoxLocation(uuid);
+		if(boxLocation == null) { timer.cancel(); return; }
 
 		timer.scheduleAtFixedRate(new TimerTask() {
+
+			private HashMap<Player, Double> pl = new HashMap<>();
+			private HashMap<Player, Double> particlePlayers = new HashMap<>();
+			private long listenersAt = 0;
+
 			@Override
 			public void run() {
+				try {
+					tick();
+				} catch(Throwable e) {
+					timer.cancel();
+					gMusicMain.getPlayService().removePlayState(uuid);
+					gMusicMain.getLogger().log(Level.WARNING, "Could not play jukebox song '" + song.getId() + "'", e);
+				}
+			}
+
+			private void tick() {
 				long z = playState.getTickPosition();
 
 				GPlaySettings playSettings = gMusicMain.getPlaySettingsService().getPlaySettings(uuid);
@@ -196,11 +223,15 @@ public class JukeBoxService {
 				if (playSettings != null) {
 					List<GNotePart> lnp = song.getContent().get(z);
 
-					HashMap<Player, Double> pl = getPlayersInRange(boxLocation, playSettings.getRange());
+					long now = System.currentTimeMillis();
+					if (now - listenersAt >= LISTENER_REFRESH_MS) {
+						pl = getPlayersInRange(boxLocation, playSettings.getRange());
+						particlePlayers = getPlayersInRange(boxLocation, gMusicMain.getConfigService().JUKEBOX_PARTICLE_RANGE);
+						listenersAt = now;
+					}
 
 					// プレイヤーが範囲内にいない場合は5分後に停止
 					if (pl.isEmpty()) {
-						long now = System.currentTimeMillis();
 						if (!emptyRangeStartTime.containsKey(uuid)) {
 							emptyRangeStartTime.put(uuid, now);
 						} else {
@@ -209,8 +240,10 @@ public class JukeBoxService {
 								timer.cancel();
 								emptyRangeStartTime.remove(uuid);
 								gMusicMain.getPlayService().removePlayState(uuid);
-								GMusicGUI m = GMusicGUI.getMusicGUI(uuid);
-								if (m != null) m.setPauseResumeBar();
+								gMusicMain.getTaskService().run(() -> {
+									GMusicGUI m = GMusicGUI.getMusicGUI(uuid);
+									if (m != null) m.setPauseResumeBar();
+								});
 								return;
 							}
 						}
@@ -219,8 +252,6 @@ public class JukeBoxService {
 						emptyRangeStartTime.remove(uuid);
 					}
 
-					// パーティクル用に広い範囲のプレイヤーを取得
-					HashMap<Player, Double> particlePlayers = getPlayersInRange(boxLocation, gMusicMain.getConfigService().JUKEBOX_PARTICLE_RANGE);
 
 					if (lnp != null && playSettings.getVolume() > 0) {
 						// ジュークボックスから常にパーティクルを出す（広い範囲のプレイヤーに表示）
@@ -269,8 +300,10 @@ public class JukeBoxService {
 								playBoxSong(uuid, gMusicMain.getPlayService().getRandomSong(uuid), gMusicMain.getConfigService().PS_TIME_UNTIL_SHUFFLE);
 							else {
 								gMusicMain.getPlayService().removePlayState(uuid);
-								GMusicGUI m = GMusicGUI.getMusicGUI(uuid);
-								if (m != null) m.setPauseResumeBar();
+								gMusicMain.getTaskService().run(() -> {
+									GMusicGUI m = GMusicGUI.getMusicGUI(uuid);
+									if (m != null) m.setPauseResumeBar();
+								});
 							}
 						}
 					} else {
@@ -299,7 +332,7 @@ public class JukeBoxService {
 		playSettings.setCurrentSong(null);
 
 		if(gMusicMain.getConfigService().A_SHOW_MESSAGES) {
-			for (Player player : gMusicMain.getJukeBoxService().getPlayersInRange(jukeBoxBlocks.entrySet().stream().filter(entry -> entry.getValue().equals(uuid)).findFirst().get().getKey().getLocation(), playSettings.getRange()).keySet()) {
+			for (Player player : gMusicMain.getJukeBoxService().getPlayersInRange(getJukeBoxLocation(uuid), playSettings.getRange()).keySet()) {
 				GPlaySettings playerSettings = gMusicMain.getPlaySettingsService().getPlaySettings(player.getUniqueId());
 				if(playerSettings != null && playerSettings.isMuteSpeakers()) continue;
 				gMusicMain.getMessageService().sendActionBarMessage(player, "Messages.actionbar-stop");
@@ -316,7 +349,7 @@ public class JukeBoxService {
 
 		GPlaySettings playSettings = gMusicMain.getPlaySettingsService().getPlaySettings(uuid);
 		if(gMusicMain.getConfigService().A_SHOW_MESSAGES) {
-			for (Player player : gMusicMain.getJukeBoxService().getPlayersInRange(jukeBoxBlocks.entrySet().stream().filter(entry -> entry.getValue().equals(uuid)).findFirst().get().getKey().getLocation(), playSettings.getRange()).keySet()) {
+			for (Player player : gMusicMain.getJukeBoxService().getPlayersInRange(getJukeBoxLocation(uuid), playSettings.getRange()).keySet()) {
 				GPlaySettings playerSettings = gMusicMain.getPlaySettingsService().getPlaySettings(player.getUniqueId());
 				if(playerSettings != null && playerSettings.isMuteSpeakers()) continue;
 				gMusicMain.getMessageService().sendActionBarMessage(player, "Messages.actionbar-pause");
@@ -333,7 +366,7 @@ public class JukeBoxService {
 
 		GPlaySettings playSettings = gMusicMain.getPlaySettingsService().getPlaySettings(uuid);
 		if(gMusicMain.getConfigService().A_SHOW_MESSAGES) {
-			for (Player player : gMusicMain.getJukeBoxService().getPlayersInRange(jukeBoxBlocks.entrySet().stream().filter(entry -> entry.getValue().equals(uuid)).findFirst().get().getKey().getLocation(), playSettings.getRange()).keySet()) {
+			for (Player player : gMusicMain.getJukeBoxService().getPlayersInRange(getJukeBoxLocation(uuid), playSettings.getRange()).keySet()) {
 				GPlaySettings playerSettings = gMusicMain.getPlaySettingsService().getPlaySettings(player.getUniqueId());
 				if(playerSettings != null && playerSettings.isMuteSpeakers()) continue;
 				gMusicMain.getMessageService().sendActionBarMessage(player, "Messages.actionbar-resume");

@@ -68,7 +68,7 @@ public class SongService {
             try {
                 GSong song = new GSong(file);
                 if(song.getNoteAmount() == 0) {
-                    gMusicMain.getLogger().warning("Could not load song '" + file.getName().substring(0, extensionPos) + "', no notes found");
+                    gMusicMain.getLogger().warning("Could not load song '" + file.getName().substring(0, extensionPos) + "', no notes found: " + song.getLoadProblem());
                     continue;
                 }
 

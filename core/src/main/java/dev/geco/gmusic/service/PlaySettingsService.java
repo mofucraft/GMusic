@@ -12,12 +12,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 
 public class PlaySettingsService {
 
 	private final GMusicMain gMusicMain;
-	private final HashMap<UUID, GPlaySettings> playSettingsCache = new HashMap<>();
+	private final Map<UUID, GPlaySettings> playSettingsCache = new ConcurrentHashMap<>();
 
 	public PlaySettingsService(GMusicMain gMusicMain) {
 		this.gMusicMain = gMusicMain;
@@ -45,7 +46,8 @@ public class PlaySettingsService {
 	}
 
 	public GPlaySettings getPlaySettings(UUID uuid) {
-		if(playSettingsCache.containsKey(uuid)) return playSettingsCache.get(uuid);
+		GPlaySettings cachedPlaySettings = playSettingsCache.get(uuid);
+		if(cachedPlaySettings != null) return cachedPlaySettings;
 
 		List<GSong> favorites = new ArrayList<>();
 

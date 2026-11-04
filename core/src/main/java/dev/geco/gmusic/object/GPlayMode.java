@@ -20,7 +20,7 @@ public enum GPlayMode {
 
     public static GPlayMode byId(int id) {
         for(GPlayMode playMode : values()) if(playMode.getId() == id) return playMode;
-        return null;
+        return DEFAULT;
     }
 
 }

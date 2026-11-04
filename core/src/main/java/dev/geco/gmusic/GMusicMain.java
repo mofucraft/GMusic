@@ -147,6 +147,10 @@ public class GMusicMain extends JavaPlugin {
 
     public void onDisable() {
         unload();
+        if(placeholderAPILink != null) {
+            placeholderAPILink.unregister();
+            placeholderAPILink = null;
+        }
         messageService.sendMessage(Bukkit.getConsoleSender(), "Plugin.plugin-disabled");
     }
 
@@ -228,10 +232,16 @@ public class GMusicMain extends JavaPlugin {
         } catch(ClassNotFoundException e) { supportsTaskFeature = false; }
     }
 
+    private PlaceholderAPILink placeholderAPILink;
+
     private void loadPluginDependencies() {
         try {
             Class.forName("me.clip.placeholderapi.PlaceholderAPI");
-            new PlaceholderAPILink(this).register();
+            // /gmusic reload のたびに二重に登録しない
+            if(placeholderAPILink == null) {
+                placeholderAPILink = new PlaceholderAPILink(this);
+                placeholderAPILink.register();
+            }
         } catch(ClassNotFoundException ignored) { }
     }
 

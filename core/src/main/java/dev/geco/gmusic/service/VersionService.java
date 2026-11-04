@@ -32,11 +32,7 @@ public class VersionService {
     public VersionService(GMusicMain gMusicMain) {
         this.gMusicMain = gMusicMain;
         serverVersion = extractServerVersion();
-        int[] parts;
-        try {
-            parts = Arrays.stream(serverVersion.split("\\.")).mapToInt(Integer::parseInt).toArray();
-        } catch(NumberFormatException e) { parts = new int[]{ 1, 21, 6 }; }
-        serverVersionParts = parts;
+        serverVersionParts = parseVersion(serverVersion);
         String packageVersion = "v" + serverVersion.replace(".", "_");
         packagePath = gMusicMain.getClass().getPackage().getName() + ".mcv." + VERSION_MAPPING.getOrDefault(packageVersion, packageVersion);
         available = hasPackageClass("object.gui.GMusicInputGUI");
@@ -48,14 +44,7 @@ public class VersionService {
     // 26.x 以降は getBukkitVersion() の形が変わるので、getVersion() の "(MC: x.y.z)" を先に読む
     private String extractServerVersion() {
         try {
-            String version = Bukkit.getServer().getVersion();
-            int start = version.indexOf("MC:");
-            if(start != -1) {
-                start += 4;
-                int end = version.indexOf(')', start);
-                if(end != -1) version = version.substring(start, end);
-            }
-            return version.split(" ")[0].trim();
+            return extractMinecraftVersion(Bukkit.getServer().getVersion());
         } catch(Throwable e) {
             try {
                 String rawServerVersion = Bukkit.getServer().getBukkitVersion();
@@ -71,7 +60,9 @@ public class VersionService {
     public boolean isAvailable() { return available; }
 
     // 例: isNewerOrVersion(1, 18, 2) は 1.18.2 以上なら true。26.1 も 1.21.x より新しいと判定できる
-    public boolean isNewerOrVersion(int... version) {
+    public boolean isNewerOrVersion(int... version) { return isNewerOrVersion(serverVersionParts, version); }
+
+    static boolean isNewerOrVersion(int[] serverVersionParts, int... version) {
         int length = Math.max(serverVersionParts.length, version.length);
         for(int i = 0; i < length; i++) {
             int server = i < serverVersionParts.length ? serverVersionParts[i] : 0;
@@ -80,6 +71,24 @@ public class VersionService {
             if(server < target) return false;
         }
         return true;
+    }
+
+    // "1.21.8" → {1, 21, 8}。読めない時は 1.21.6 として扱う
+    static int[] parseVersion(String version) {
+        try {
+            return Arrays.stream(version.split("\\.")).mapToInt(Integer::parseInt).toArray();
+        } catch(NumberFormatException e) { return new int[]{ 1, 21, 6 }; }
+    }
+
+    // 例: "git-Paper-112 (MC: 26.2)" → "26.2"
+    static String extractMinecraftVersion(String version) {
+        int start = version.indexOf("MC:");
+        if(start != -1) {
+            start += 4;
+            int end = version.indexOf(')', start);
+            if(end != -1) version = version.substring(start, end);
+        }
+        return version.split(" ")[0].trim();
     }
 
     public Object getPackageObjectInstance(String className, Object... parameters) {

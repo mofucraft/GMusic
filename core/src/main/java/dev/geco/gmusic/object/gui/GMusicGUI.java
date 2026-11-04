@@ -32,14 +32,16 @@ import org.jetbrains.annotations.NotNull;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 
 public class GMusicGUI {
 
 	private final GMusicMain gMusicMain = GMusicMain.getInstance();
 	private final HashMap<Integer, GSong> pageSongs = new HashMap<>();
-	private static final HashMap<UUID, GMusicGUI> musicGUIS = new HashMap<>();
+	private static final Map<UUID, GMusicGUI> musicGUIS = new ConcurrentHashMap<>();
 	private static final int VOLUME_STEPS = 10;
 	private static final int SHIFT_VOLUME_STEPS = 1;
 	private static final long RANGE_STEPS = 1;

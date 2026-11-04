@@ -19,13 +19,18 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.logging.Level;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class PlayService {
 
 	private final GMusicMain gMusicMain;
+	private static final long LISTENER_REFRESH_MS = 200;
+	private static final long ACTION_BAR_REFRESH_MS = 1000;
 	private final Random random = new Random();
-	private final HashMap<UUID, GPlayState> playStates = new HashMap<>();
+	// 再生は Timer の別スレッドで進むので、本体と同時に触っても壊れない表にする
+	private final Map<UUID, GPlayState> playStates = new ConcurrentHashMap<>();
 
 	public PlayService(GMusicMain gMusicMain) {
 		this.gMusicMain = gMusicMain;
@@ -147,7 +152,7 @@ public class PlayService {
 
 		try {
 			for (Player nearbyPlayer : sourceLocation.getWorld().getPlayers()) {
-				if (nearbyPlayer.getUniqueId().equals(sourcePlayer.getUniqueId()))
+				if (nearbyPlayer.getUniqueId().equals(sourcePlayer.getUniqueId()) || !nearbyPlayer.isOnline())
 					continue;
 
 				GPlaySettings nearbySettings = gMusicMain.getPlaySettingsService()
@@ -173,17 +178,37 @@ public class PlayService {
 		GPlaySettings playSettings = gMusicMain.getPlaySettingsService().getPlaySettings(player.getUniqueId());
 
 		timer.scheduleAtFixedRate(new TimerTask() {
+
+			// この Timer は 1ms ごとに動く。周りの人の探し直しとアクションバーは、毎回やると重いので間を空ける
+			private HashMap<Player, Double> speakerListeners = new HashMap<>();
+			private long speakerListenersAt = 0;
+			private long actionBarAt = 0;
+
 			@Override
 			public void run() {
+				try {
+					tick();
+				} catch(Throwable e) {
+					timer.cancel();
+					playStates.remove(uuid, playState);
+					gMusicMain.getLogger().log(Level.WARNING, "Could not play song '" + song.getId() + "'", e);
+				}
+			}
+
+			private void tick() {
 				long position = playState.getTickPosition();
 
 				List<GNotePart> noteParts = song.getContent().get(position);
 
 				if (noteParts != null && playSettings.getVolume() > 0) {
 					boolean isSpeakerMode = playSettings.isSpeakerMode();
-					HashMap<Player, Double> speakerListeners = isSpeakerMode
-							? getSpeakerListeners(player, playSettings.getSpeakerRange())
-							: new HashMap<>();
+					if(isSpeakerMode) {
+						long now = System.currentTimeMillis();
+						if(now - speakerListenersAt >= LISTENER_REFRESH_MS) {
+							speakerListeners = getSpeakerListeners(player, playSettings.getSpeakerRange());
+							speakerListenersAt = now;
+						}
+					} else if(!speakerListeners.isEmpty()) speakerListeners = new HashMap<>();
 
 					// Play to source player with full volume
 					// スピーカーモードON時は必ずパーティクルを表示
@@ -228,6 +253,9 @@ public class PlayService {
 						for (GNotePart notePart : noteParts) {
 							if (notePart.getSound() != null) {
 								for (Player listener : speakerListeners.keySet()) {
+									// 探し直しの間（最大 0.2 秒）に抜けた人には送らない（設定の控えを作り直さないため）
+									if (!listener.isOnline())
+										continue;
 									double distance = speakerListeners.get(listener);
 									GPlaySettings listenerSettings = gMusicMain.getPlaySettingsService()
 											.getPlaySettings(listener.getUniqueId());
@@ -290,10 +318,13 @@ public class PlayService {
 						playSong(player, getNextSongInPlaylist(uuid, song),
 								gMusicMain.getConfigService().PS_TIME_UNTIL_CONTINUE);
 					} else {
-							playStates.remove(uuid);
-							GMusicGUI musicGUI = GMusicGUI.getMusicGUI(uuid);
-							if (musicGUI != null)
-								musicGUI.setPauseResumeBar();
+							playStates.remove(uuid, playState);
+							// 画面（インベントリ）は本体のスレッドで書き換える
+							gMusicMain.getTaskService().run(() -> {
+								GMusicGUI musicGUI = GMusicGUI.getMusicGUI(uuid);
+								if (musicGUI != null)
+									musicGUI.setPauseResumeBar();
+							});
 						}
 					}
 					return;
@@ -301,7 +332,9 @@ public class PlayService {
 
 				playState.setTickPosition(playSettings.isReverseMode() ? position - 1 : position + 1);
 
-				if (gMusicMain.getConfigService().A_SHOW_WHILE_PLAYING) {
+				long now = System.currentTimeMillis();
+				if (gMusicMain.getConfigService().A_SHOW_WHILE_PLAYING && now - actionBarAt >= ACTION_BAR_REFRESH_MS) {
+					actionBarAt = now;
 					gMusicMain.getMessageService().sendActionBarMessage(
 							player,
 							"Messages.actionbar-playing",

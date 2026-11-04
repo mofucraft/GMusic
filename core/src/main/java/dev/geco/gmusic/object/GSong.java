@@ -28,12 +28,18 @@ public class GSong {
 	private long noteAmount = 0;
 	private long length = 0;
 	private String category;
+	private boolean hasSongSection;
+	private int mainRowAmount;
 
     public GSong(File gnbsFile) {
         YamlConfiguration config = YamlConfiguration.loadConfiguration(gnbsFile);
 		filename = gnbsFile.getName();
 
-		id = config.getString("Song.Id");
+		hasSongSection = config.isConfigurationSection("Song");
+		String songId = config.getString("Song.Id");
+		// Song.Id が無いファイルは、ファイル名（拡張子なし）を id にする
+		if(songId == null || songId.isBlank()) songId = filename.contains(".") ? filename.substring(0, filename.lastIndexOf('.')) : filename;
+		id = songId;
 		title = config.getString("Song.Title", id);
 		originalAuthor = config.getString("Song.OAuthor");
 		author = config.getString("Song.Author");
@@ -65,6 +71,7 @@ public class GSong {
 		}
 
 		List<String> mainContent = config.getStringList("Song.Content.Main");
+		mainRowAmount = mainContent.size();
 		for(String row : mainContent) notes.add(new GNote(this, row));
 
 		for(GNote note : notes) {
@@ -80,7 +87,7 @@ public class GSong {
 								List<GNotePart> noteParts = content.get(length);
 								noteParts.addAll(noteReference.getNoteParts());
 								content.put(length, noteParts);
-							} else content.put(length, noteReference.getNoteParts());
+							} else content.put(length, new ArrayList<>(noteReference.getNoteParts()));
 
 							noteAmount += noteReference.getNoteParts().size();
 						}
@@ -96,7 +103,7 @@ public class GSong {
 					List<GNotePart> noteParts = content.get(length);
 					noteParts.addAll(note.getNoteParts());
 					content.put(length, noteParts);
-				} else content.put(length, note.getNoteParts());
+				} else content.put(length, new ArrayList<>(note.getNoteParts()));
 
 				noteAmount += note.getNoteParts().size();
 			}
@@ -104,6 +111,14 @@ public class GSong {
 	}
 
 	public String getFileName() { return filename; }
+
+	/** 曲が読めなかったときの理由（ログ用）。読めていれば null */
+	public String getLoadProblem() {
+		if(noteAmount > 0) return null;
+		if(!hasSongSection) return "the file is not valid gnbs (no 'Song:' section, YAML could not be read)";
+		if(mainRowAmount == 0) return "'Song.Content.Main' is empty";
+		return "'Song.Content.Main' has " + mainRowAmount + " rows but no playable notes";
+	}
 
 	public String getId() { return id; }
 

@@ -11,7 +11,6 @@ import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.entity.Player;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
@@ -80,6 +79,10 @@ public class RadioService {
 		GPlaySettings playSettings = gMusicMain.getPlaySettingsService().getPlaySettings(radioUUID);
 
 		timer.scheduleAtFixedRate(new TimerTask() {
+
+			// 1ms ごとに動くので、アクションバーは 1 秒に 1 回だけ送る
+			private long actionBarAt = 0;
+
 			@Override
 			public void run() {
 				try {
@@ -87,7 +90,8 @@ public class RadioService {
 
 					List<GNotePart> noteParts = song.getContent().get(position);
 
-					List<Player> players = new ArrayList<>(radioPlayers);
+					// CopyOnWriteArraySet はそのまま回しても、途中の出入りで壊れない
+					Set<Player> players = radioPlayers;
 
 					if(noteParts != null && playSettings.getVolume() > 0 && !players.isEmpty()) {
 						for(Player player : players) {
@@ -124,7 +128,9 @@ public class RadioService {
 						playRadioSong(gMusicMain.getPlayService().getShuffleSong(radioUUID, song), gMusicMain.getConfigService().PS_TIME_UNTIL_SHUFFLE);
 					} else {
 						playState.setTickPosition(playSettings.isReverseMode() ? position - 1 : position + 1);
-						if(gMusicMain.getConfigService().A_SHOW_WHILE_PLAYING) {
+						long now = System.currentTimeMillis();
+						if(gMusicMain.getConfigService().A_SHOW_WHILE_PLAYING && now - actionBarAt >= 1000) {
+							actionBarAt = now;
 							for(Player radioPlayer : players) {
 								if(radioPlayer == null) continue;
 								gMusicMain.getMessageService().sendActionBarMessage(
