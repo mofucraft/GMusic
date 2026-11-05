@@ -304,12 +304,10 @@ public class GMusicGUI {
 						if(!gMusicMain.getConfigService().G_DISABLE_SPEAKER_MODE) {
 							if(click == ClickType.SHIFT_LEFT || click == ClickType.SHIFT_RIGHT) {
 								// Shift+クリック: 範囲調整
-								long range = playSettings.getSpeakerRange();
-								long maxRange = gMusicMain.getConfigService().MAX_SPEAKER_RANGE;
-								// 管理者でない人は既定の範囲までに制限
-								if(clicker instanceof Player clickPlayer && !gMusicMain.getPermissionService().hasPermission(clickPlayer, "AMusic.*")) {
-									maxRange = gMusicMain.getConfigService().SPEAKER_DEFAULT_RANGE;
-								}
+								// 管理者でない人は住民の上限（member-max-speaker-range）まで。再生時の頭打ちと同じ値
+								Player rangePlayer = clicker instanceof Player clickPlayer ? clickPlayer : null;
+								long maxRange = gMusicMain.getPlayService().getSpeakerRangeLimit(rangePlayer);
+								long range = Math.min(playSettings.getSpeakerRange(), maxRange);
 								boolean isDecrease = click == ClickType.SHIFT_RIGHT;
 								long newRange = isDecrease ? Math.max(range - SHIFT_RANGE_STEPS, 1) : Math.min(range + SHIFT_RANGE_STEPS, maxRange);
 								playSettings.setSpeakerRange(newRange);
@@ -557,11 +555,12 @@ public class GMusicGUI {
 			// 範囲説明付きのスピーカーモード表示
 			itemMeta.setDisplayName(gMusicMain.getMessageService().getMessage("MusicGUI.music-options-speaker-mode",
 				"%SpeakerMode%", gMusicMain.getMessageService().getMessage(playSettings.isSpeakerMode() ? "MusicGUI.music-options-true" : "MusicGUI.music-options-false"),
-				"%Range%", "" + playSettings.getSpeakerRange()));
+				"%Range%", "" + gMusicMain.getPlayService().getEffectiveSpeakerRange(Bukkit.getPlayer(uuid), playSettings)));
 			List<String> speakerLore = new ArrayList<>();
 			speakerLore.add(gMusicMain.getMessageService().toFormattedMessage("&7クリック: ON/OFF"));
 			speakerLore.add(gMusicMain.getMessageService().toFormattedMessage("&7Shift+左: 範囲+10"));
 			speakerLore.add(gMusicMain.getMessageService().toFormattedMessage("&7Shift+右: 範囲-10"));
+			speakerLore.add(gMusicMain.getMessageService().toFormattedMessage("&7範囲の上限: " + gMusicMain.getPlayService().getSpeakerRangeLimit(Bukkit.getPlayer(uuid))));
 			itemMeta.setLore(speakerLore);
 			if(playSettings.isSpeakerMode()) {
 				itemMeta.addEnchant(org.bukkit.enchantments.Enchantment.UNBREAKING, 1, true);

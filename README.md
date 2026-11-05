@@ -149,8 +149,10 @@ Options:
   max-jukebox-range: 500      # Jukeboxの最大範囲
 
   # スピーカーモード設定（新機能）
-  speaker-default-range: 20   # デフォルトのスピーカーモード範囲
-  max-speaker-range: 100      # スピーカーモードの最大範囲
+  speaker-default-range: 20   # デフォルトのスピーカーモード範囲（初めて使う人の値）
+  member-max-speaker-range: 50 # 住民が広げられる上限（無ければ speaker-default-range と同じ）
+  max-speaker-range: 100      # スピーカーモードの最大範囲（管理者はここまで）
+  speaker-listener-volume: 1.0 # 聞く側の音量の倍率（0.0〜1.0・本人の音量は変えない）
 
   # サウンド設定
   Sound:
@@ -308,6 +310,11 @@ GMusic/
 
 ## 変更履歴
 
+### v1.3.3 (2026-11) - スピーカーの範囲と聞く側の音量
+
+- スピーカーの範囲: 既定（`speaker-default-range`）と住民の上限（`member-max-speaker-range`・新しい設定）を分けた。既定 20 のまま住民も 50 まで広げられる。書かなければ今まで通り（既定が上限）。GUI に「範囲の上限」を表示
+- スピーカーを聞く側の音量の倍率 `speaker-listener-volume`（0.0〜1.0・既定 1.0 で今まで通り）。鳴らしている本人の音量は変えない
+
 ### v1.3.2 (2026-11) - loop・toggle の on/off と、言語ファイルの更新
 
 - `/music loop [on|off]`・`/music toggle [on|off]`（引数なしは今まで通り切り替え）。on/off 以外の語は使い方を出す。`loop off` はループ中だけ解除（シャッフル等はそのまま）。変えた設定はすぐ保存
@@ -410,8 +417,10 @@ jukebox-particle-range: 100      # パーティクル表示範囲（可聴範囲
 | `max-jukebox-range` | ジュークボックス | GUI で設定可能な最大可聴範囲 | 50 |
 | `jukebox-particle-range` | ジュークボックス | パーティクルが見える範囲 | 100 |
 | `jukebox-auto-stop-delay` | ジュークボックス | 範囲外時の自動停止遅延（ms） | 600000 |
-| `speaker-default-range` | プレイヤー | スピーカーモードのデフォルト範囲 | 30 |
-| `max-speaker-range` | プレイヤー | スピーカーモードの最大範囲 | 100 |
+| `speaker-default-range` | プレイヤー | スピーカーモードのデフォルト範囲（初めて使う人の値） | 30 |
+| `member-max-speaker-range` | プレイヤー | 住民（`GMusic.AMusic.*` でない人）が GUI で広げられる上限。再生時もここで頭打ち | 無し（= `speaker-default-range`） |
+| `max-speaker-range` | プレイヤー | スピーカーモードの最大範囲（管理者の上限） | 100 |
+| `speaker-listener-volume` | プレイヤー | スピーカーを聞く側の音量に掛ける倍率（0.0〜1.0）。鳴らしている本人の音量と距離での減り方は変えない | 1.0 |
 
 **ジュークボックス vs プレイヤースピーカーの違い**:
 - **ジュークボックス**: 設置ブロックから音が出る。`可聴範囲`は GUI から変更可能（最大値は config で制限）
@@ -439,7 +448,7 @@ OPプレイヤーは `/music speaker` コマンドで特別なスピーカー設
 - このコマンドは **configの制限を無視** できます（例: max-speaker-range: 100 でも 200 を指定可能）
 - 均一半径・最大半径の設定はセッション中のみ有効で、DBには保存されません
 - GUIで設定変更すると、均一半径は0にリセットされます
-- 一般プレイヤーはGUIでのみ範囲調整可能（configの max-speaker-range まで）
+- 一般プレイヤーはGUIでのみ範囲調整可能（configの member-max-speaker-range まで。書いていなければ speaker-default-range まで）
 
 #### 設置ジュークボックス（音楽プレイヤーブロック）
 

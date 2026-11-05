@@ -34,11 +34,23 @@ Options:
   # Defines the range at which players can see jukebox particles (should be larger than max-jukebox-range)
   jukebox-particle-range: 100
 
-  # Defines the default range for speaker mode
+  # Defines the default range for speaker mode (the first value for a player who has never used it)
+  # スピーカーの届く範囲の既定（初めて使う人の値）
   speaker-default-range: 30
 
-  # Defines the max range of speaker mode
+  # Defines how far players without GMusic.AMusic.* can widen the speaker range (GUI and playback)
+  # If not set, it is the same as speaker-default-range (as before)
+  # 住民（GMusic.AMusic.* でない人）が広げられる上限。書かなければ speaker-default-range と同じ（今まで通り）
+  # member-max-speaker-range: 50
+
+  # Defines the max range of speaker mode (admins can widen up to this)
+  # スピーカーの範囲の全体の上限（管理者はここまで）
   max-speaker-range: 100
+
+  # Multiplies the volume other players hear from a speaker (0.0 - 1.0). The speaker's own volume is not changed
+  # 1.0 = as before. Distance falloff (uniform radius + squared falloff) stays the same
+  # スピーカーを聞く側の音量に掛ける倍率（0.0〜1.0）。鳴らしている本人の音量は変わらない。1.0 で今まで通り
+  speaker-listener-volume: 1.0
 
   ActionBar:
 

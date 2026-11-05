@@ -60,11 +60,41 @@ public class PlayService {
 
 	/**
 	 * スピーカーの届く範囲。設定の上限（max-speaker-range）を超えず、管理者（GMusic.AMusic.*）でない人は
-	 * 既定の範囲（speaker-default-range）まで。GUI の上限だけでは、前に広げた値がそのまま使われていた。
+	 * 住民の上限（member-max-speaker-range・無ければ speaker-default-range）まで。
+	 * GUI の上限だけでは、前に広げた値がそのまま使われていた。
 	 */
-	static long clampSpeakerRange(long range, long maxRange, long defaultRange, boolean admin) {
-		long limit = admin ? maxRange : Math.min(defaultRange, maxRange);
-		return Math.max(1, Math.min(range, limit));
+	static long clampSpeakerRange(long range, long maxRange, long memberMaxRange, boolean admin) {
+		return Math.max(1, Math.min(range, speakerRangeLimit(maxRange, memberMaxRange, admin)));
+	}
+
+	/** 広げられる範囲の上限（GUI と再生で同じ）。 */
+	static long speakerRangeLimit(long maxRange, long memberMaxRange, boolean admin) {
+		return Math.max(1, admin ? maxRange : Math.min(memberMaxRange, maxRange));
+	}
+
+	public long getSpeakerRangeLimit(Player player) {
+		boolean admin = player != null && gMusicMain.getPermissionService().hasPermission(player, "AMusic.*");
+		return speakerRangeLimit(gMusicMain.getConfigService().MAX_SPEAKER_RANGE, gMusicMain.getConfigService().MEMBER_MAX_SPEAKER_RANGE, admin);
+	}
+
+	/** 実際に使う範囲（保存値を上限で頭打ちにした値）。 */
+	public long getEffectiveSpeakerRange(Player player, GPlaySettings playSettings) {
+		return Math.max(1, Math.min(playSettings.getSpeakerRange(), getSpeakerRangeLimit(player)));
+	}
+
+	/**
+	 * スピーカーを聞く人の音量（音符ごとの音量と聞く人の音量設定を掛ける前）。均一半径の中は fixedVolume、
+	 * 外は二乗で減る。最後に聞く側の倍率（speaker-listener-volume）を掛ける。鳴らしている本人には使わない。
+	 */
+	static float speakerListenerBaseVolume(double distance, long uniformRadius, long maxRange, float fixedVolume, double listenerFactor) {
+		float baseVolume;
+		if(distance <= uniformRadius) baseVolume = fixedVolume;
+		else {
+			float span = Math.max(1, maxRange - uniformRadius);
+			float normalizedDistance = (float) (distance - uniformRadius) / span;
+			baseVolume = fixedVolume / (1.0f + normalizedDistance * normalizedDistance);
+		}
+		return (float) (baseVolume * listenerFactor);
 	}
 
 	private void refreshSpeakerListeners() {
@@ -73,11 +103,7 @@ public class PlayService {
 			if(player == null) { speakerListenerCache.remove(uuid); speakerRangeCache.remove(uuid); continue; }
 			GPlaySettings playSettings = gMusicMain.getPlaySettingsService().getCachedPlaySettings(uuid);
 			if(playSettings == null || !playSettings.isSpeakerMode()) { speakerListenerCache.remove(uuid); speakerRangeCache.remove(uuid); continue; }
-			long range = clampSpeakerRange(
-					playSettings.getSpeakerRange(),
-					gMusicMain.getConfigService().MAX_SPEAKER_RANGE,
-					gMusicMain.getConfigService().SPEAKER_DEFAULT_RANGE,
-					gMusicMain.getPermissionService().hasPermission(player, "AMusic.*"));
+			long range = getEffectiveSpeakerRange(player, playSettings);
 			speakerRangeCache.put(uuid, range);
 			speakerListenerCache.put(uuid, getSpeakerListeners(player, range));
 		}
@@ -310,16 +336,11 @@ public class PlayService {
 										continue;
 									double distance = cachedDistance;
 
-									// 均一音量半径＋二乗減衰
+									// 均一音量半径＋二乗減衰・聞く側の倍率
 									long uniformRadius = playSettings.getUniformRadius();
 									long maxRange = speakerRangeCache.getOrDefault(uuid, playSettings.getSpeakerRange());
-									float baseVolume;
-									if (distance <= uniformRadius) {
-										baseVolume = playSettings.getFixedVolume();
-									} else {
-										float normalizedDistance = (float) (distance - uniformRadius) / (maxRange - uniformRadius);
-										baseVolume = playSettings.getFixedVolume() / (1.0f + normalizedDistance * normalizedDistance);
-									}
+									float baseVolume = speakerListenerBaseVolume(distance, uniformRadius, maxRange,
+											playSettings.getFixedVolume(), gMusicMain.getConfigService().SPEAKER_LISTENER_VOLUME);
 									float listenerVolume = baseVolume * notePart.getVolume()
 											* listenerSettings.getVolume() / 100f;
 
