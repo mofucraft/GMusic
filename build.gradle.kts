@@ -61,6 +61,8 @@ tasks {
     }
 
     processResources {
+        // 版を変えたら plugin.yml も作り直す（入力に無いと古い版のまま jar に入っていた）
+        inputs.property("version", project.version.toString())
         from("resources") {
             exclude("resource_pack", "plugin.yml")
         }
