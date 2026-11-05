@@ -43,6 +43,8 @@ public class ConfigService {
     public boolean G_DISABLE_FAVORITES;
     public long SPEAKER_DEFAULT_RANGE;
     public long MAX_SPEAKER_RANGE;
+    public long MEMBER_MAX_SPEAKER_RANGE;
+    public double SPEAKER_LISTENER_VOLUME;
     public boolean PS_D_SPEAKER_MODE;
     public boolean PS_D_MUTE_SPEAKERS;
     public long JUKEBOX_AUTO_STOP_DELAY;
@@ -116,10 +118,19 @@ public class ConfigService {
 
         SPEAKER_DEFAULT_RANGE = gMusicMain.getConfig().getLong("Options.speaker-default-range", 30);
         MAX_SPEAKER_RANGE = gMusicMain.getConfig().getLong("Options.max-speaker-range", 100);
+        // 住民（GMusic.AMusic.* でない人）が広げられる上限。書いていなければ今まで通り speaker-default-range
+        MEMBER_MAX_SPEAKER_RANGE = gMusicMain.getConfig().getLong("Options.member-max-speaker-range", SPEAKER_DEFAULT_RANGE);
+        // スピーカーを聞く側の音量に掛ける倍率（0.0〜1.0・鳴らしている本人の音量は変えない）
+        SPEAKER_LISTENER_VOLUME = clampUnit(gMusicMain.getConfig().getDouble("Options.speaker-listener-volume", 1.0));
         PS_D_SPEAKER_MODE = gMusicMain.getConfig().getBoolean("Options.PlayerSettings.Default.speaker-mode", false);
         PS_D_MUTE_SPEAKERS = gMusicMain.getConfig().getBoolean("Options.PlayerSettings.Default.mute-speakers", false);
         JUKEBOX_AUTO_STOP_DELAY = gMusicMain.getConfig().getLong("Options.jukebox-auto-stop-delay", 300000);
         JUKEBOX_PARTICLE_RANGE = gMusicMain.getConfig().getLong("Options.jukebox-particle-range", 100);
+    }
+
+    static double clampUnit(double value) {
+        if(Double.isNaN(value)) return 1.0;
+        return Math.max(0.0, Math.min(1.0, value));
     }
 
 }
