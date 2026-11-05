@@ -106,27 +106,31 @@ public class GMusicCommand implements CommandExecutor {
                 gMusicMain.getMessageService().sendMessage(sender, "Messages.command-gmusic-play", "%Song%", song.getId(), "%SongTitle%", song.getTitle());
             }
             case "toggle" -> {
+                // /music toggle [on|off]（引数なしは切り替え）。on = 専用ジュークボックスの音を聞く（toggleMode は「聞かない」の印）
                 GPlaySettings playSettings = gMusicMain.getPlaySettingsService().getPlaySettings(player.getUniqueId());
-                playSettings.setToggleMode(!playSettings.isToggleMode());
+                Boolean wanted = args.length >= 2 ? parseOnOff(args[1]) : null;
+                if(args.length >= 2 && wanted == null) {
+                    gMusicMain.getMessageService().sendMessage(sender, "Messages.command-gmusic-onoff-usage", "%Command%", "toggle");
+                    return true;
+                }
+                boolean hearJukeBoxes = wanted != null ? wanted : playSettings.isToggleMode();
+                playSettings.setToggleMode(!hearJukeBoxes);
+                gMusicMain.getPlaySettingsService().savePlaySettingsAsync(player.getUniqueId(), playSettings);
+                gMusicMain.getMessageService().sendMessage(sender, hearJukeBoxes ? "Messages.command-gmusic-toggle-on" : "Messages.command-gmusic-toggle-off");
             }
             case "loop" -> {
-                GPlaySettings playSettings = gMusicMain.getPlaySettingsService().getPlaySettings(player.getUniqueId());
                 // /music loop [on|off]（引数なしは切り替え）
-                boolean enableLoop;
-                if (args.length >= 2) {
-                    enableLoop = switch (args[1].toLowerCase()) {
-                        case "on" -> true;
-                        case "off" -> false;
-                        default -> playSettings.getPlayMode() != GPlayMode.LOOP;
-                    };
-                } else enableLoop = playSettings.getPlayMode() != GPlayMode.LOOP;
-                if (enableLoop) {
-                    playSettings.setPlayMode(GPlayMode.LOOP);
-                    gMusicMain.getMessageService().sendMessage(sender, "Messages.command-gmusic-loop-on");
-                } else {
-                    playSettings.setPlayMode(GPlayMode.DEFAULT);
-                    gMusicMain.getMessageService().sendMessage(sender, "Messages.command-gmusic-loop-off");
+                GPlaySettings playSettings = gMusicMain.getPlaySettingsService().getPlaySettings(player.getUniqueId());
+                Boolean wanted = args.length >= 2 ? parseOnOff(args[1]) : null;
+                if(args.length >= 2 && wanted == null) {
+                    // 以前は on/off 以外の語でも黙って切り替えていた
+                    gMusicMain.getMessageService().sendMessage(sender, "Messages.command-gmusic-onoff-usage", "%Command%", "loop");
+                    return true;
                 }
+                GPlayMode playMode = loopTarget(playSettings.getPlayMode(), wanted);
+                playSettings.setPlayMode(playMode);
+                gMusicMain.getPlaySettingsService().savePlaySettingsAsync(player.getUniqueId(), playSettings);
+                gMusicMain.getMessageService().sendMessage(sender, playMode == GPlayMode.LOOP ? "Messages.command-gmusic-loop-on" : "Messages.command-gmusic-loop-off");
             }
             case "favorite" -> {
                 // 再生中の曲をお気に入りに追加/削除
@@ -221,6 +225,27 @@ public class GMusicCommand implements CommandExecutor {
         }
 
         return true;
+    }
+
+    /** "on"/"off"（と同じ意味の語）を読む。読めなければ null。 */
+    static Boolean parseOnOff(String arg) {
+        if(arg == null) return null;
+        return switch(arg.toLowerCase(java.util.Locale.ROOT)) {
+            case "on", "true", "enable", "1" -> Boolean.TRUE;
+            case "off", "false", "disable", "0" -> Boolean.FALSE;
+            default -> null;
+        };
+    }
+
+    /**
+     * /music loop の後の再生モード。wanted が null なら切り替え。
+     * off はループ中だけ DEFAULT に戻す（シャッフルや連続再生を勝手に消さない）。
+     */
+    static GPlayMode loopTarget(GPlayMode current, Boolean wanted) {
+        boolean looping = current == GPlayMode.LOOP;
+        boolean enable = wanted != null ? wanted : !looping;
+        if(enable) return GPlayMode.LOOP;
+        return looping ? GPlayMode.DEFAULT : (current != null ? current : GPlayMode.DEFAULT);
     }
 
 }

@@ -41,7 +41,8 @@ public class GMusicTabComplete implements TabCompleter {
             if(gMusicMain.getPermissionService().hasPermission(sender, "Reload")) {
                 complete.add("reload");
             }
-            if(sender.isOp()) {
+            // コマンド側と同じ権限で出す（以前は isOp() 固定で、権限を渡した人に候補が出なかった）
+            if(gMusicMain.getPermissionService().hasPermission(sender, "Speaker")) {
                 complete.add("speaker");
             }
             if(!args[args.length - 1].isEmpty()) {
@@ -54,12 +55,12 @@ public class GMusicTabComplete implements TabCompleter {
                     for(GSong song : gMusicMain.getSongService().getSongs()) complete.add(song.getId());
                 }
             }
-            if(sender.isOp() && args[0].equalsIgnoreCase("speaker")) {
+            if(gMusicMain.getPermissionService().hasPermission(sender, "Speaker") && args[0].equalsIgnoreCase("speaker")) {
                 complete.add("on");
                 complete.add("off");
                 complete.add("range");
             }
-            if(gMusicMain.getPermissionService().hasPermission(sender, "Music") && args[0].equalsIgnoreCase("loop")) {
+            if(gMusicMain.getPermissionService().hasPermission(sender, "Music") && (args[0].equalsIgnoreCase("loop") || args[0].equalsIgnoreCase("toggle"))) {
                 complete.add("on");
                 complete.add("off");
             }
