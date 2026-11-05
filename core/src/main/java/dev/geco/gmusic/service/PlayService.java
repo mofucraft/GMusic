@@ -30,6 +30,8 @@ public class PlayService {
 	private final Map<UUID, GPlayState> playStates = new ConcurrentHashMap<>();
 	// スピーカーモードの聞き手。メインスレッドで数 tick ごとに計算し、再生スレッドは読むだけ
 	private final Map<UUID, Map<Player, Double>> speakerListenerCache = new ConcurrentHashMap<>();
+	// スピーカーの実際に届く範囲（権限で頭打ちした値）。メインスレッドで決め、再生スレッドは読むだけ
+	private final Map<UUID, Long> speakerRangeCache = new ConcurrentHashMap<>();
 	/** 聞き手を計算し直す間隔（tick）。2 tick = 100ms */
 	public static final long LISTENER_REFRESH_TICKS = 2;
 	/** 「再生中」アクションバーを送る間隔（ms）。以前は 1ms ごと（毎秒 1000 回）送っていた */
@@ -53,17 +55,34 @@ public class PlayService {
 		if(listenerRefreshTask != null) gMusicMain.getTaskService().cancel(listenerRefreshTask);
 		listenerRefreshTask = null;
 		speakerListenerCache.clear();
+		speakerRangeCache.clear();
+	}
+
+	/**
+	 * スピーカーの届く範囲。設定の上限（max-speaker-range）を超えず、管理者（GMusic.AMusic.*）でない人は
+	 * 既定の範囲（speaker-default-range）まで。GUI の上限だけでは、前に広げた値がそのまま使われていた。
+	 */
+	static long clampSpeakerRange(long range, long maxRange, long defaultRange, boolean admin) {
+		long limit = admin ? maxRange : Math.min(defaultRange, maxRange);
+		return Math.max(1, Math.min(range, limit));
 	}
 
 	private void refreshSpeakerListeners() {
 		for(UUID uuid : playStates.keySet()) {
 			Player player = Bukkit.getPlayer(uuid);
-			if(player == null) { speakerListenerCache.remove(uuid); continue; }
+			if(player == null) { speakerListenerCache.remove(uuid); speakerRangeCache.remove(uuid); continue; }
 			GPlaySettings playSettings = gMusicMain.getPlaySettingsService().getCachedPlaySettings(uuid);
-			if(playSettings == null || !playSettings.isSpeakerMode()) { speakerListenerCache.remove(uuid); continue; }
-			speakerListenerCache.put(uuid, getSpeakerListeners(player, playSettings.getSpeakerRange()));
+			if(playSettings == null || !playSettings.isSpeakerMode()) { speakerListenerCache.remove(uuid); speakerRangeCache.remove(uuid); continue; }
+			long range = clampSpeakerRange(
+					playSettings.getSpeakerRange(),
+					gMusicMain.getConfigService().MAX_SPEAKER_RANGE,
+					gMusicMain.getConfigService().SPEAKER_DEFAULT_RANGE,
+					gMusicMain.getPermissionService().hasPermission(player, "AMusic.*"));
+			speakerRangeCache.put(uuid, range);
+			speakerListenerCache.put(uuid, getSpeakerListeners(player, range));
 		}
 		speakerListenerCache.keySet().removeIf(uuid -> !playStates.containsKey(uuid));
+		speakerRangeCache.keySet().removeIf(uuid -> !playStates.containsKey(uuid));
 	}
 
 	/** 再生位置が「再生中」アクションバーを送る位置かどうか（1 秒に 1 回）。 */
@@ -293,7 +312,7 @@ public class PlayService {
 
 									// 均一音量半径＋二乗減衰
 									long uniformRadius = playSettings.getUniformRadius();
-									long maxRange = playSettings.getSpeakerRange();
+									long maxRange = speakerRangeCache.getOrDefault(uuid, playSettings.getSpeakerRange());
 									float baseVolume;
 									if (distance <= uniformRadius) {
 										baseVolume = playSettings.getFixedVolume();
