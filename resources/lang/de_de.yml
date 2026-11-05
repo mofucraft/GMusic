@@ -8,6 +8,7 @@ Plugin:
   plugin-reload: "[P]&a Das Plugin wurde erfolgreich neu geladen."
   plugin-disabled: "[P]&a Das Plugin wurde erfolgreich deaktiviert."
   plugin-prefix: "&7[&6GMusic&7]"
+  lang-version: 2
 
 Messages:
 

@@ -12,6 +12,8 @@ Plugin:
   plugin-reload: "[P]&a プラグインが正常にリロードされました。"
   plugin-disabled: "[P]&a プラグインが正常に無効化されました。"
   plugin-prefix: "&7[&d音楽&7]"
+  # 文の版。入れ替え時に、版が古い文（ヘルプなど）だけ新しい文に置き換える（元のファイルは lang-backup/ に残す）
+  lang-version: 2
 
 Messages:
   command-permission-error: "[P]&c このコマンドを使用する権限がありません！"

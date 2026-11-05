@@ -12,6 +12,8 @@ Plugin:
   plugin-reload: "[P]&a The plugin was successfully reloaded."
   plugin-disabled: "[P]&a The plugin was successfully disabled."
   plugin-prefix: "&7[&6GMusic&7]"
+  # Language file version. Outdated texts (e.g. help) are replaced on update; the old file is kept in lang-backup/
+  lang-version: 2
 
 Messages:
   command-permission-error: "[P]&c You don't have permission to use this command!"
