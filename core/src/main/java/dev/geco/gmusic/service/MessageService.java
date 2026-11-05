@@ -14,8 +14,12 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
+import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
@@ -33,6 +37,17 @@ abstract public class MessageService {
     protected final GMusicMain gMusicMain;
     protected final HashMap<String, FileConfiguration> messages = new HashMap<>();
     protected String defaultLanguage;
+
+    /** 言語ファイルの版を書くキー。無いファイルは版 1 とみなす。 */
+    static final String LANG_VERSION_KEY = "Plugin.lang-version";
+    /**
+     * 版ごとに「中身を新しくした文」。既にある言語ファイルは足りないキーしか足されないため、
+     * 文を直してもサーバーの古いファイルが優先されて新しい文が出なかった（例: ヘルプの loop [on|off]）。
+     * ファイルの版がこれより古いときだけ、ここに挙げた文を jar の文に置き換える。
+     */
+    static final Map<Integer, List<String>> UPDATED_KEYS = Map.of(
+            2, List.of("Messages.command-gmusic-help")
+    );
 
     public MessageService(GMusicMain gMusicMain) {
         this.gMusicMain = gMusicMain;
@@ -60,11 +75,18 @@ abstract public class MessageService {
                 InputStream langSteam = gMusicMain.getResource(jarEntry.getName());
                 if(langSteam != null) {
                     FileConfiguration langSteamConfig = YamlConfiguration.loadConfiguration(new InputStreamReader(langSteam, StandardCharsets.UTF_8));
-                    if(lang.getKeys(true).equals(langSteamConfig.getKeys(true))) continue;
+                    int fileVersion = langFile.exists() ? lang.getInt(LANG_VERSION_KEY, 1) : langSteamConfig.getInt(LANG_VERSION_KEY, 1);
+                    boolean outdated = fileVersion < langSteamConfig.getInt(LANG_VERSION_KEY, 1);
+                    if(!outdated && lang.getKeys(true).equals(langSteamConfig.getKeys(true))) continue;
+                    if(outdated) backupLangFile(langFile, fileVersion);
                     lang.setDefaults(langSteamConfig);
                     YamlConfigurationOptions options = (YamlConfigurationOptions) lang.options();
                     options.parseComments(true).copyDefaults(true).width(500);
                     lang.loadFromString(lang.saveToString());
+                    if(outdated) {
+                        List<String> refreshed = applyLangUpdates(lang, langSteamConfig, fileVersion);
+                        if(!refreshed.isEmpty()) gMusicMain.getLogger().info("Updated " + refreshed.size() + " text(s) in " + jarEntry.getName() + " to version " + langSteamConfig.getInt(LANG_VERSION_KEY, 1) + " (old file: lang-backup/)");
+                    }
                     for(String comments : lang.getKeys(true)) lang.setComments(comments, langSteamConfig.getComments(comments));
                     lang.save(langFile);
                 } else if(!langFile.exists()) gMusicMain.saveResource(jarEntry.getName(), false);
@@ -73,6 +95,36 @@ abstract public class MessageService {
         File langFolder = new File(gMusicMain.getDataFolder(), "lang");
         for(File langFile : Objects.requireNonNull(langFolder.listFiles())) messages.put(langFile.getName().replaceFirst("lang/", "").replaceFirst(".yml", ""), YamlConfiguration.loadConfiguration(langFile));
         defaultLanguage = messages.containsKey(gMusicMain.getConfigService().L_LANG) ? gMusicMain.getConfigService().L_LANG : "en_us";
+    }
+
+    /**
+     * 版が古い言語ファイルの文を新しくする。fileVersion より新しい版で直した文だけを jar の文で置き換え、
+     * それ以外（サーバーで書き換えた文）はそのまま残す。置き換えたキーを返す。
+     */
+    static List<String> applyLangUpdates(FileConfiguration lang, FileConfiguration jarLang, int fileVersion) {
+        int jarVersion = jarLang.getInt(LANG_VERSION_KEY, 1);
+        List<String> refreshed = new ArrayList<>();
+        for(int version = fileVersion + 1; version <= jarVersion; version++) {
+            for(String key : UPDATED_KEYS.getOrDefault(version, List.of())) {
+                if(!jarLang.contains(key, true)) continue;
+                Object jarValue = jarLang.get(key);
+                if(!Objects.equals(lang.get(key), jarValue)) refreshed.add(key);
+                lang.set(key, jarValue);
+            }
+        }
+        lang.set(LANG_VERSION_KEY, jarVersion);
+        return refreshed;
+    }
+
+    /** 置き換える前のファイルを lang-backup/<名前>-v<版>.yml に写す（既にあれば上書きしない）。 */
+    private void backupLangFile(File langFile, int fileVersion) {
+        if(!langFile.exists()) return;
+        try {
+            File backupFolder = new File(gMusicMain.getDataFolder(), "lang-backup");
+            if(!backupFolder.exists() && !backupFolder.mkdirs()) return;
+            File backup = new File(backupFolder, langFile.getName().replaceFirst("\\.yml$", "") + "-v" + fileVersion + ".yml");
+            if(!backup.exists()) Files.copy(langFile.toPath(), backup.toPath());
+        } catch(Throwable e) { gMusicMain.getLogger().log(Level.WARNING, "Could not back up " + langFile.getName(), e); }
     }
 
     abstract public String toFormattedMessage(String text, Object... rawReplaceList);
@@ -87,7 +139,15 @@ abstract public class MessageService {
 
     public String getTranslatedMessage(String message, String languageCode, Object... replaceList) { return toFormattedMessage(getRawTranslatedMessage(message, languageCode, replaceList)); }
 
-    public String getRawTranslatedMessage(String message, String languageCode, Object... replaceList) { return replaceWithLanguageCode(message == null || message.isEmpty() ? "" : getMessages(languageCode).getString(message, message), languageCode, replaceList); }
+    public String getRawTranslatedMessage(String message, String languageCode, Object... replaceList) {
+        String raw = "";
+        if(message != null && !message.isEmpty()) {
+            raw = getMessages(languageCode).getString(message);
+            // その言語のファイルに無い文は、キーの名前でなく既定の言語の文を出す（例: de_de に無い loop の文）
+            if(raw == null) raw = getMessages(defaultLanguage).getString(message, message);
+        }
+        return replaceWithLanguageCode(raw, languageCode, replaceList);
+    }
 
     public String getLanguageForTarget(CommandSender target) {
         if(!gMusicMain.getConfigService().L_CLIENT_LANG || !(target instanceof Player)) return defaultLanguage;

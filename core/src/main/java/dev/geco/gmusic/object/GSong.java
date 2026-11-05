@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Objects;
 
 public class GSong {
 
@@ -35,8 +36,9 @@ public class GSong {
 
 		id = config.getString("Song.Id");
 		title = config.getString("Song.Title", id);
-		originalAuthor = config.getString("Song.OAuthor");
-		author = config.getString("Song.Author");
+		// 作者の欄が無い・空の曲で、再生やアクションバーが NullPointerException で落ちていた
+		originalAuthor = Objects.requireNonNullElse(config.getString("Song.OAuthor"), "");
+		author = Objects.requireNonNullElse(config.getString("Song.Author"), "");
 		description = config.getStringList("Song.Description");
 		String material = config.getString("Song.Material");
 		if(material != null) {

@@ -12,15 +12,18 @@ Plugin:
   plugin-reload: "[P]&a The plugin was successfully reloaded."
   plugin-disabled: "[P]&a The plugin was successfully disabled."
   plugin-prefix: "&7[&6GMusic&7]"
+  # Language file version. Outdated texts (e.g. help) are replaced on update; the old file is kept in lang-backup/
+  lang-version: 2
 
 Messages:
   command-permission-error: "[P]&c You don't have permission to use this command!"
   command-sender-error: "[P]&c You can't run this command!"
   command-version-error: "[P]&c Outdated server version! (&b%Version%&c)\n[P]&c Upgrade the server to use this feature!"
   command-gmusic-use-error: "[P]&c Type /music help for command list"
-  command-gmusic-help: "[P]&6&l=== &e&lGMusic Command Help &6&l===\n[P]&a/music &7- Open GUI\n[P]&a/music play <songID> &7- Play a song\n[P]&a/music playing &7- Show current song\n[P]&a/music random &7- Play random song\n[P]&a/music stop &7- Stop playback\n[P]&a/music pause &7- Pause song\n[P]&a/music resume &7- Resume song\n[P]&a/music skip &7- Skip to next song\n[P]&a/music loop [on|off] &7- Toggle/set loop mode\n[P]&a/music favorite &7- Add/remove current song to favorites\n[P]&a/music toggle &7- Toggle jukebox mute\n[P]&a/music reload &7- Reload songs (perm required)\n[P]&a/music speaker &7- Speaker mode (OP only)"
+  command-gmusic-help: "[P]&6&l=== &e&lGMusic Command Help &6&l===\n[P]&a/music &7- Open GUI\n[P]&a/music play <songID> &7- Play a song\n[P]&a/music playing &7- Show current song\n[P]&a/music random &7- Play random song\n[P]&a/music stop &7- Stop playback\n[P]&a/music pause &7- Pause song\n[P]&a/music resume &7- Resume song\n[P]&a/music skip &7- Skip to next song\n[P]&a/music loop [on|off] &7- Loop playback (on/off, or toggle)\n[P]&a/music favorite &7- Add/remove current song to favorites\n[P]&a/music toggle [on|off] &7- Jukebox sounds (on/off, or toggle)\n[P]&a/music reload &7- Reload songs (perm required)\n[P]&a/music speaker &7- Speaker mode (OP only)"
   command-gmusic-loop-on: "[P]&a Loop playback&2 enabled&a."
   command-gmusic-loop-off: "[P]&a Loop playback&c disabled&a."
+  command-gmusic-onoff-usage: "[P]&c Usage: /music %Command% [on|off] (no argument toggles)"
   command-gmusic-reload-songs: "[P]&a Songs reloaded. (&6%Count%&a songs)"
   command-gmusic-speaker-on: "[P]&a Speaker mode&2 enabled&a. (Uniform radius: &b%Uniform%&a, Max range: &b%Max%&a)"
   command-gmusic-speaker-off: "[P]&a Speaker mode&c disabled&a."
